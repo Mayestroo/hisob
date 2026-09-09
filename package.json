@@ -1,7 +1,7 @@
 {
   "name": "novda-hisob-kitob",
   "private": true,
-  "version": "1.5.8",
+  "version": "1.5.9",
   "main": "electron/main.cjs",
   "author": "Novda",
   "description": "Novda Hisob-Kitob Tizimi",

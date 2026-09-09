@@ -15,7 +15,7 @@ import { useEffect } from 'react';
 import { useWorkbookStore } from './workbookStore';
 import { useUIStore } from './uiStore';
 import { useAuthStore, applyRolePermissions } from './authStore';
-import { initAutoSyncQueue, subscribeToCompany } from '../services/firebaseSync';
+import { initAutoSyncQueue, subscribeToCompany, flushOfflineQueue } from '../services/firebaseSync';
 import { ensureAnonymousAuth } from '../services/firebaseAuth';
 import { initDeviceRemoteListener } from '../services/deviceRemoteService';
 import { mergeCloudSyncData } from './helpers/syncMerger';
@@ -103,7 +103,11 @@ export function useStoreBridge() {
       syncLicenseAuth(legacy.licenseStatus);
     }
 
-    ensureAnonymousAuth();
+    ensureAnonymousAuth().then((user) => {
+      if (user) {
+        flushOfflineQueue();
+      }
+    });
     const cleanupSync = initAutoSyncQueue();
 
     // Multi-User Real-time Sync Subscription from other PCs of the same company

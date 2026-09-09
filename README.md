@@ -81,7 +81,7 @@ Windows 10/11 uchun to'liq avtonom o'rnatuvchi paketni yaratish:
 ```bash
 npm run dist
 ```
-Natijaviy fayl: `dist-build/Novda-hisob-kitob-Setup-1.5.8-win10-11-x64.exe`
+Natijaviy fayl: `dist-build/Novda-hisob-kitob-Setup-1.5.9-win10-11-x64.exe`
 
 ---
 
