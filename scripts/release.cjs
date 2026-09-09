@@ -161,7 +161,7 @@ async function main() {
   const repo = 'Mayestroo/hisob-releases';
 
   try {
-    execSync(`gh release create v${newVersion} "${exePath}" --repo ${repo} --title "v${newVersion}" --notes "${releaseNotes}"`, {
+    execSync(`gh release create v${newVersion} "${exePath}" --repo ${repo} --target main --title "v${newVersion}" --notes "${releaseNotes}"`, {
       stdio: 'inherit',
       cwd: ROOT_DIR
     });
