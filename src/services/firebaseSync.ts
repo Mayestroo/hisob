@@ -47,6 +47,29 @@ export function subscribeToCompany(
 }
 
 /**
+/**
+ * Firebase Realtime Database 'undefined' qiymatlarni qabul qilmaydi.
+ * Ushbu funksiya barcha ob'ektlardan 'undefined' kalitlarni olib tashlaydi,
+ * massivlardagi 'undefined' qiymatlarni esa null ga o'tkazadi.
+ */
+export function cleanForFirebase<T>(data: T): T {
+  if (data === undefined) return null as any;
+  if (data === null || typeof data !== 'object') return data;
+
+  if (Array.isArray(data)) {
+    return data.map((item) => (item === undefined ? null : cleanForFirebase(item))) as any;
+  }
+
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      clean[key] = cleanForFirebase(value);
+    }
+  }
+  return clean as T;
+}
+
+/**
  * Ma'lumotni saqlash yoki yangilash (Online bo'lsa Firebase'ga, oflayn bo'lsa IndexedDB navbatiga)
  */
 export async function syncWrite(
@@ -57,14 +80,15 @@ export async function syncWrite(
 ): Promise<boolean> {
   const db = getFirebaseDB();
   const fullPath = `companies/${companyId}/${subPath}`;
+  const sanitized = cleanForFirebase(data);
 
   if (IS_FIREBASE_CONFIGURED && db && navigator.onLine) {
     try {
       const targetRef = ref(db, fullPath);
       if (mode === 'set') {
-        await set(targetRef, data);
+        await set(targetRef, sanitized);
       } else {
-        await update(targetRef, data);
+        await update(targetRef, sanitized);
       }
       return true;
     } catch (err) {
@@ -73,7 +97,7 @@ export async function syncWrite(
   }
 
   // Oflayn navbatga saqlash
-  await enqueueChange(companyId, fullPath, data, mode);
+  await enqueueChange(companyId, fullPath, sanitized, mode);
   return false;
 }
 
@@ -94,10 +118,11 @@ export async function flushOfflineQueue(): Promise<{ sent: number; remaining: nu
     for (const item of changes) {
       try {
         const itemRef = ref(db, item.path);
+        const cleanVal = cleanForFirebase(item.value);
         if (item.action === 'set') {
-          await set(itemRef, item.value);
+          await set(itemRef, cleanVal);
         } else {
-          await update(itemRef, item.value);
+          await update(itemRef, cleanVal);
         }
         if (item.id !== undefined) {
           await removePendingChange(item.id);
@@ -117,7 +142,7 @@ export async function flushOfflineQueue(): Promise<{ sent: number; remaining: nu
 }
 
 /**
- * Avtomatik oflayn navbatni tinglash (online bo'lganda flush qilish)
+ * Avtomatik oflayn navbatni tinglash (online bo'lganda flush qilish va davriy tekshirish)
  */
 export function initAutoSyncQueue(): () => void {
   if (syncActive) return () => {};
@@ -135,8 +160,20 @@ export function initAutoSyncQueue(): () => void {
     flushOfflineQueue();
   }
 
+  // Internet turganda navbatdagi qolib ketgan elementlarni har 15 soniyada tekshirib yuborish
+  const intervalId = setInterval(() => {
+    if (navigator.onLine && !isFlushing) {
+      getPendingCount().then((count) => {
+        if (count > 0) {
+          flushOfflineQueue();
+        }
+      });
+    }
+  }, 15000);
+
   return () => {
     window.removeEventListener('online', handleOnline);
+    clearInterval(intervalId);
     syncActive = false;
   };
 }

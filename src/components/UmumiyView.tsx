@@ -415,13 +415,13 @@ export const UmumiyView: React.FC = () => {
       <div ref={tbodyRef} style={{ flex: 1, overflow: 'auto', position: 'relative', background: 'var(--bg-app)' }}>
         <table className="excel-table" style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
           <colgroup>
-            <col style={{ width: '54px' }} />  {/* A: № */}
-            <col style={{ width: '240px' }} /> {/* B: F.I.O */}
-            <col style={{ width: '150px' }} /> {/* C: Sof foyda */}
-            <col style={{ width: '120px' }} /> {/* D: Staj */}
-            <col style={{ width: '130px' }} /> {/* E: Avans */}
-            <col style={{ width: '120px' }} /> {/* F: Jarima */}
-            <col style={{ width: '150px' }} /> {/* G: Umumiy */}
+            <col style={{ width: '54px' }} />
+            <col style={{ width: '240px' }} />
+            <col style={{ width: '150px' }} />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '130px' }} />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '150px' }} />
           </colgroup>
 
           <thead>

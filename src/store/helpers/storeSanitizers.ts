@@ -204,11 +204,15 @@ export function sanitizePrintedPartyHistory(history: any[]): any[] {
   return Array.from(map.values()).map((r) => {
     cumPattas += Number(r.pattaCount) || 0;
     cumIshs += Number(r.totalIshSoni || r.ishSoni) || 0;
-    return {
+    const cleanR: any = {
       ...r,
       cumulativePattaCount: cumPattas,
       cumulativeIshSoni: cumIshs
     };
+    if (cleanR.closedAt === undefined) {
+      delete cleanR.closedAt;
+    }
+    return cleanR;
   });
 }
 

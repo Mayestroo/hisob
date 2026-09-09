@@ -390,11 +390,11 @@ export const PattaView: React.FC<PattaViewProps> = ({ model }) => {
         {/* Form Card Grid Table */}
         <table className="excel-table" style={{ width: '100%' }}>
           <colgroup>
-            <col style={{ width: '54px' }} />  {/* Col A: № */}
-            <col style={{ width: '270px' }} /> {/* Col B: Name */}
-            <col style={{ width: '120px' }} /> {/* Col C: Input */}
-            <col style={{ width: '260px' }} /> {/* Col D: Details */}
-            <col style={{ width: '180px' }} /> {/* Col E: Extra */}
+            <col style={{ width: '54px' }} />
+            <col style={{ width: '270px' }} />
+            <col style={{ width: '120px' }} />
+            <col style={{ width: '260px' }} />
+            <col style={{ width: '180px' }} />
           </colgroup>
 
           <tbody>

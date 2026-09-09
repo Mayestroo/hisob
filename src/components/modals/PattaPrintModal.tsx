@@ -553,11 +553,11 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
                         }}
                       >
                         <colgroup>
-                          <col style={{ width: '38px' }} />  {/* № */}
-                          <col style={{ width: '250px' }} /> {/* Operatsiya nomi / Konveyer / Partiya / Patta / Ish soni */}
-                          <col style={{ width: '90px' }} />  {/* Nomer / Konveyer val / Party val / Patta val */}
-                          <col style={{ width: '220px' }} /> {/* Ism familiya / Sana / Rang */}
-                          <col style={{ width: '140px' }} /> {/* Brak ish / Razmer */}
+                          <col style={{ width: '38px' }} />
+                          <col style={{ width: '250px' }} />
+                          <col style={{ width: '90px' }} />
+                          <col style={{ width: '220px' }} />
+                          <col style={{ width: '140px' }} />
                         </colgroup>
                         <tbody>
                           {/* ROW 1: Model Title */}

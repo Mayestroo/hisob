@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { useOnline } from '../hooks/useOnline';
 import { useSyncStore } from '../store/syncStore';
 import { getPendingCount } from '../services/offlineQueue';
+import { flushOfflineQueue } from '../services/firebaseSync';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 export const ConnectionStatus: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
@@ -14,6 +15,13 @@ export const ConnectionStatus: React.FC<{ style?: React.CSSProperties }> = ({ st
   const status = useSyncStore((s) => s.status);
   const syncing = status === 'syncing';
   const [pendingCount, setPendingCount] = useState<number>(0);
+
+  const handleManualSync = async () => {
+    if (online && pendingCount > 0 && !syncing) {
+      const res = await flushOfflineQueue();
+      setPendingCount(res.remaining);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -32,6 +40,7 @@ export const ConnectionStatus: React.FC<{ style?: React.CSSProperties }> = ({ st
 
   return (
     <div
+      onClick={handleManualSync}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -46,12 +55,15 @@ export const ConnectionStatus: React.FC<{ style?: React.CSSProperties }> = ({ st
         backdropFilter: 'blur(8px)',
         transition: 'all 0.2s',
         userSelect: 'none',
+        cursor: online && pendingCount > 0 ? 'pointer' : 'default',
         ...style
       }}
       title={
         online
           ? syncing
             ? 'Sinxronlanmoqda...'
+            : pendingCount > 0
+            ? `${pendingCount} ta o'zgarish navbatda. Bosing — qayta yuborish`
             : 'Tarmoq ulangan (Online)'
           : 'Tarmoq uzilgan (Oflayn rejim — o\'zgarishlar lokal saqlanmoqda)'
       }
