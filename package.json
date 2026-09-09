@@ -1,0 +1,86 @@
+{
+  "name": "novda-hisob-kitob",
+  "private": true,
+  "version": "1.5.8",
+  "main": "electron/main.cjs",
+  "author": "Novda",
+  "description": "Novda Hisob-Kitob Tizimi",
+  "scripts": {
+    "dev": "concurrently \"node server/server.js\" \"vite\"",
+    "start": "concurrently \"node server/server.js\" \"vite\" \"electron .\"",
+    "desktop": "electron .",
+    "server": "node server/server.js",
+    "client": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "dist": "tsc && vite build && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.novda.hisob",
+    "productName": "Novda-hisob-kitob",
+    "electronVersion": "44.0.0",
+    "compression": "normal",
+    "asar": true,
+    "directories": {
+      "output": "dist-build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/**/*",
+      "package.json",
+      "!node_modules/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Novda Hisob-Kitob",
+      "artifactName": "Novda-hisob-kitob-Setup-${version}-win10-11-x64.exe",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    }
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.14.11",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "firebase": "^12.18.0",
+    "lz-string": "^1.5.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/lz-string": "^1.5.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "clsx": "^2.1.1",
+    "concurrently": "^10.0.5",
+    "electron": "44.0.0",
+    "electron-builder": "^26.15.3",
+    "lucide-react": "^1.42.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0",
+    "zustand": "^5.0.15"
+  }
+}

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: novda-telegram-admin-bot
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python telegram_admin_bot.py"
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_CHAT_ID
+        sync: false
+      - key: PORT
+        value: "10000"
