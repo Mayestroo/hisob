@@ -8,6 +8,25 @@ const license = require('./license.cjs');
 
 let mainWindow;
 
+// ==================== SINGLE INSTANCE LOCK ====================
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // If another instance is already running, quit immediately
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // If user attempted to launch a second instance, focus and restore our window
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(createWindow);
+}
+
 // ==================== DATA LAYER ====================
 function getDataDir() {
   const userData = app.getPath('userData');
@@ -580,8 +599,6 @@ function createWindow() {
 process.on('uncaughtException', (err) => {
   console.error('Main process uncaughtException:', err);
 });
-
-app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

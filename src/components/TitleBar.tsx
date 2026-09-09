@@ -1,5 +1,5 @@
 import React from 'react';
-import { Save, Download, Database, Users, Calendar, ShieldCheck, ShieldAlert, Clock, Code2, Sun, Moon, Building2, Sparkles } from 'lucide-react';
+import { Save, Download, Database, Users, Calendar, ShieldCheck, ShieldAlert, Clock, Code2, Sun, Moon, Building2, RefreshCw } from 'lucide-react';
 import { useWorkbookStore } from '../store/workbookStore';
 import { useTrialCountdown } from '../hooks/useTrialCountdown';
 import { RoleBadge } from './RoleBadge';
@@ -99,38 +99,53 @@ export const TitleBar: React.FC = () => {
           {theme === 'dark' ? <Sun size={14} color="#fde047" /> : <Moon size={14} color="#cbd5e1" />}
         </button>
 
-        {/* In-App Update Badge Button */}
-        {availableUpdate && (
-          <button
-            onClick={() => openModal({ type: 'app_update' })}
-            className="quick-btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '11.5px',
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.45) 100%)',
-              border: '1px solid rgba(52, 211, 153, 0.6)',
-              color: '#a7f3d0',
-              padding: '4px 12px',
-              borderRadius: 'var(--radius-full)',
-              cursor: 'pointer',
-              boxShadow: '0 0 12px rgba(16, 185, 129, 0.4)',
-              animation: 'pulse 2s infinite'
-            }}
-            title={`Yangi versiya mavjud: v${availableUpdate.version}. Bosib yangilang.`}
-          >
-            <Sparkles size={14} color="#34d399" />
-            <span>Yangi versiya: v{availableUpdate.version}</span>
-          </button>
-        )}
-
         {/* Role Badge (RBAC) */}
         <RoleBadge />
 
         {/* Real-time Connection Status & Offline Queue */}
         <ConnectionStatus />
+
+        {/* Update Check / Status Icon Button */}
+        <button
+          onClick={() => openModal({ type: 'app_update' })}
+          className="quick-btn"
+          style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '28px',
+            padding: 0,
+            borderRadius: 'var(--radius-full)',
+            background: availableUpdate ? 'rgba(16, 185, 129, 0.22)' : 'rgba(255, 255, 255, 0.08)',
+            border: availableUpdate ? '1px solid rgba(52, 211, 153, 0.65)' : '1px solid rgba(255, 255, 255, 0.18)',
+            color: availableUpdate ? '#34d399' : '#cbd5e1',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            backdropFilter: 'blur(8px)',
+            boxShadow: availableUpdate ? '0 0 10px rgba(16, 185, 129, 0.45)' : 'none'
+          }}
+          title={availableUpdate ? `Yangi versiya mavjud: v${availableUpdate.version}. Bosib yangilang.` : "Dastur yangilanishlarini tekshirish"}
+        >
+          <RefreshCw size={14} color={availableUpdate ? '#34d399' : '#cbd5e1'} />
+          {/* Notification dot badge when update is available */}
+          {availableUpdate && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '-2px',
+                right: '-2px',
+                width: '9px',
+                height: '9px',
+                backgroundColor: '#10b981',
+                borderRadius: '50%',
+                border: '2px solid #0f172a',
+                boxShadow: '0 0 6px #10b981'
+              }}
+            />
+          )}
+        </button>
 
         {/* License / Trial Badge */}
         <div
