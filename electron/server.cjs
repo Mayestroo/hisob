@@ -306,9 +306,11 @@ function setupServer(customDataDir, distDir) {
   // Serve Frontend Bundle
   if (distDir && fs.existsSync(distDir)) {
     app.use(express.static(distDir));
-    app.get('*', (req, res) => {
-      if (!req.path.startsWith('/api')) {
+    app.use((req, res, next) => {
+      if (req.method === 'GET' && !req.path.startsWith('/api')) {
         res.sendFile(path.join(distDir, 'index.html'));
+      } else {
+        next();
       }
     });
   }

@@ -9,6 +9,7 @@ import {
   PrintedPartyRecord,
   SubmittedTicketRecord
 } from '../types/workbook';
+import { AppUpdateInfo } from '../types/update';
 
 export interface ActiveCellInfo {
   cellId: string;
@@ -30,6 +31,7 @@ export interface ModalState {
     | 'developer_info'
     | 'patta_print'
     | 'worker_detail'
+    | 'app_update'
     | null;
   modelId?: string;
   opName?: string;
@@ -150,6 +152,7 @@ export interface UiSlice {
   notifications: Notification[];
   modalState: ModalState;
   loadingMessage: string | null;
+  availableUpdate: AppUpdateInfo | null;
   setActiveSheet: (sheetName: string) => void;
   setActiveCell: (info: ActiveCellInfo) => void;
   openModal: (modal: ModalState) => void;
@@ -157,6 +160,7 @@ export interface UiSlice {
   addNotification: (type: Notification['type'], title: string, message: string) => void;
   removeNotification: (id: string) => void;
   setLoadingMessage: (msg: string | null) => void;
+  setAvailableUpdate: (update: AppUpdateInfo | null) => void;
 }
 
 export interface PersistenceSlice {

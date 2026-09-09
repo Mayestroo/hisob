@@ -149,53 +149,53 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
               color: #000000;
             }
             .print-page-a4 {
-              width: 100%;
-              height: 286mm;
-              max-height: 286mm;
-              box-sizing: border-box;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-              padding: 0;
-              page-break-inside: avoid;
-              break-inside: avoid;
+              width: 100% !important;
+              height: 286mm !important;
+              max-height: 286mm !important;
+              box-sizing: border-box !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
             .print-page-a4:not(:last-child) {
-              page-break-after: always;
-              break-after: page;
+              page-break-after: always !important;
+              break-after: page !important;
             }
             .print-page-a4:last-child {
-              page-break-after: avoid;
-              break-after: avoid;
+              page-break-after: avoid !important;
+              break-after: avoid !important;
             }
             .print-ticket-box {
-              width: 100%;
-              height: 140mm;
-              max-height: 140mm;
-              box-sizing: border-box;
-              display: flex;
-              flex-direction: column;
-              overflow: hidden;
-              page-break-inside: avoid;
-              break-inside: avoid;
-              margin-bottom: 2mm;
+              width: 100% !important;
+              height: 141mm !important;
+              max-height: 141mm !important;
+              box-sizing: border-box !important;
+              display: flex !important;
+              flex-direction: column !important;
+              overflow: hidden !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              margin-bottom: 2mm !important;
             }
             .print-ticket-box:last-child {
-              margin-bottom: 0;
+              margin-bottom: 0 !important;
             }
             table {
-              width: 100%;
-              height: 100%;
-              border-collapse: collapse;
-              font-family: 'Times New Roman', Times, serif;
-              font-weight: bold;
-              color: #000000;
-              table-layout: fixed;
+              width: 100% !important;
+              height: 100% !important;
+              border-collapse: collapse !important;
+              font-family: 'Times New Roman', Times, serif !important;
+              font-weight: bold !important;
+              color: #000000 !important;
+              table-layout: fixed !important;
             }
             td, th {
-              border: 1px solid #000000;
-              vertical-align: middle;
-              word-break: break-word;
+              border: 1px solid #000000 !important;
+              vertical-align: middle !important;
             }
             .vertical-patta-num {
               writing-mode: vertical-lr !important;
@@ -451,74 +451,74 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
                 </div>
                 {pageTickets.map((t) => {
                   const opCount = t.operations.length;
-                  const dyn = opCount <= 10
+                  const dyn = opCount <= 12
                     ? {
-                        tableFontSize: '13.5pt',
-                        titleFontSize: '15.5pt',
-                        headerHeight: '26px',
-                        cellPadding: '1.5px 5px',
-                        opFontSize: '13.5pt',
-                        idxFontSize: '12.5pt',
-                        lineHeight: '1.18',
-                        verticalPattaFontSize: '26pt',
-                        verticalPachkaFontSize: '16pt',
-                        verticalSizesFontSize: '12pt',
-                        verticalPattaLetterSpacing: '2px'
-                      }
-                    : opCount <= 14
-                    ? {
-                        tableFontSize: '11.5pt',
-                        titleFontSize: '13.5pt',
-                        headerHeight: '22px',
-                        cellPadding: '1px 4px',
-                        opFontSize: '11.5pt',
-                        idxFontSize: '11pt',
-                        lineHeight: '1.12',
-                        verticalPattaFontSize: '22pt',
-                        verticalPachkaFontSize: '14pt',
+                        tableFontSize: '12pt',
+                        titleFontSize: '14.5pt',
+                        headerHeight: '23px',
+                        cellPadding: '1.2px 4px',
+                        opFontSize: '12.5pt',
+                        idxFontSize: '11.5pt',
+                        lineHeight: '1.14',
+                        verticalPattaFontSize: '24pt',
+                        verticalPachkaFontSize: '15pt',
                         verticalSizesFontSize: '11pt',
                         verticalPattaLetterSpacing: '1.5px'
                       }
-                    : opCount <= 18
+                    : opCount <= 15
+                    ? {
+                        tableFontSize: '11.5pt',
+                        titleFontSize: '13.5pt',
+                        headerHeight: '20px',
+                        cellPadding: '0.8px 4px',
+                        opFontSize: '11.5pt',
+                        idxFontSize: '11pt',
+                        lineHeight: '1.10',
+                        verticalPattaFontSize: '21pt',
+                        verticalPachkaFontSize: '13.5pt',
+                        verticalSizesFontSize: '10.5pt',
+                        verticalPattaLetterSpacing: '1.2px'
+                      }
+                    : opCount <= 20
+                    ? {
+                        tableFontSize: '10.5pt',
+                        titleFontSize: '12.5pt',
+                        headerHeight: '17px',
+                        cellPadding: '0.5px 3.5px',
+                        opFontSize: '11.5pt',
+                        idxFontSize: '10.5pt',
+                        lineHeight: '1.08',
+                        verticalPattaFontSize: '18.5pt',
+                        verticalPachkaFontSize: '12.5pt',
+                        verticalSizesFontSize: '9.5pt',
+                        verticalPattaLetterSpacing: '0.8px'
+                      }
+                    : opCount <= 23
                     ? {
                         tableFontSize: '10pt',
-                        titleFontSize: '12pt',
-                        headerHeight: '18px',
-                        cellPadding: '0.8px 3px',
-                        opFontSize: '10pt',
-                        idxFontSize: '9.5pt',
-                        lineHeight: '1.08',
-                        verticalPattaFontSize: '19pt',
-                        verticalPachkaFontSize: '12pt',
-                        verticalSizesFontSize: '10pt',
-                        verticalPattaLetterSpacing: '1px'
-                      }
-                    : opCount <= 22
-                    ? {
-                        tableFontSize: '8.5pt',
-                        titleFontSize: '10.5pt',
+                        titleFontSize: '11.5pt',
                         headerHeight: '15.5px',
-                        cellPadding: '0.4px 2px',
-                        opFontSize: '8.5pt',
-                        idxFontSize: '8pt',
-                        lineHeight: '1.02',
-                        verticalPattaFontSize: '17pt',
+                        cellPadding: '0.4px 3px',
+                        opFontSize: '10.8pt',
+                        idxFontSize: '9.5pt',
+                        lineHeight: '1.05',
+                        verticalPattaFontSize: '16.5pt',
                         verticalPachkaFontSize: '11pt',
                         verticalSizesFontSize: '9pt',
                         verticalPattaLetterSpacing: '0.5px'
                       }
                     : {
-                        tableFontSize: '7.5pt',
-                        titleFontSize: '9pt',
-                        headerHeight: '14px',
-                        cellPadding: '0.2px 2px',
-                        opFontSize: '7.5pt',
-                        idxFontSize: '7pt',
-                        lineHeight: '1.0',
-                        verticalPattaFontSize: '15pt',
+                        tableFontSize: '9.5pt',
+                        titleFontSize: '11pt',
+                        headerHeight: '14.5px',
+                        cellPadding: '0.2px 2.5px',
+                        opFontSize: '10pt',
+                        idxFontSize: '9pt',
+                        lineHeight: '1.03',
+                        verticalPattaFontSize: '14.5pt',
                         verticalPachkaFontSize: '10pt',
-                        verticalSizesFontSize: '8pt',
-                        verticalPattaLetterSpacing: '0px'
+                        verticalSizesFontSize: '8.5pt',
+                        verticalPattaLetterSpacing: '0.2px'
                       };
 
                   return (
@@ -553,10 +553,10 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
                         }}
                       >
                         <colgroup>
-                          <col style={{ width: '38px' }} />
-                          <col style={{ width: '250px' }} />
-                          <col style={{ width: '90px' }} />
-                          <col style={{ width: '220px' }} />
+                          <col style={{ width: '36px' }} />
+                          <col style={{ width: '315px' }} />
+                          <col style={{ width: '72px' }} />
+                          <col style={{ width: '175px' }} />
                           <col style={{ width: '140px' }} />
                         </colgroup>
                         <tbody>
@@ -654,7 +654,18 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
                               <td style={{ border: borderStyle, textAlign: 'center', fontWeight: 'bold', fontSize: dyn.idxFontSize, padding: dyn.cellPadding }}>
                                 {opIdx + 1}
                               </td>
-                              <td style={{ border: borderStyle, padding: dyn.cellPadding, fontSize: dyn.opFontSize, fontWeight: 'bold' }}>
+                              <td
+                                style={{
+                                  border: borderStyle,
+                                  padding: dyn.cellPadding,
+                                  paddingLeft: '6px',
+                                  fontSize: dyn.opFontSize,
+                                  fontWeight: 'bold',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}
+                              >
                                 {op.name}
                               </td>
                               <td style={{ border: borderStyle }}></td>

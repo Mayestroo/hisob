@@ -14,7 +14,9 @@ export const createUiSlice: StateCreator<WorkbookStore, [], [], UiSlice> = (set,
   notifications: [],
   modalState: { type: null },
   loadingMessage: null,
+  availableUpdate: null,
 
+  setAvailableUpdate: (update) => set({ availableUpdate: update }),
   setLoadingMessage: (msg: string | null) => set({ loadingMessage: msg }),
 
   setActiveSheet: (sheetName: string) => {

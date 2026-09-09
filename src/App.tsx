@@ -20,6 +20,7 @@ const WorkerDetailModal = React.lazy(() => import('./components/modals/WorkerDet
 const BackupManagerModal = React.lazy(() => import('./components/modals/BackupManagerModal').then(m => ({ default: m.BackupManagerModal })));
 const PeriodManagerModal = React.lazy(() => import('./components/modals/PeriodManagerModal').then(m => ({ default: m.PeriodManagerModal })));
 const DeveloperModal = React.lazy(() => import('./components/modals/DeveloperModal').then(m => ({ default: m.DeveloperModal })));
+const AppUpdateModal = React.lazy(() => import('./components/modals/AppUpdateModal').then(m => ({ default: m.AppUpdateModal })));
 
 import { NotificationToast } from './components/NotificationToast';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -27,6 +28,7 @@ import { useWorkbookStore } from './store/workbookStore';
 import { PermissionGuard } from './components/PermissionGuard';
 import { AccessDenied } from './components/AccessDenied';
 import { SYSTEM_SHEET_NAMES } from './constants/sheetConstants';
+import { subscribeToAppUpdates } from './services/updateService';
 
 export const App: React.FC = () => {
   const activeSheet = useWorkbookStore((s) => s.activeSheet);
@@ -52,6 +54,14 @@ export const App: React.FC = () => {
 
     return () => {
       clearInterval(interval);
+    };
+  }, []);
+
+  // Real-time app updates subscription (Firebase RTDB)
+  useEffect(() => {
+    const unsub = subscribeToAppUpdates();
+    return () => {
+      unsub();
     };
   }, []);
 
@@ -257,6 +267,7 @@ export const App: React.FC = () => {
         {modalType === 'worker_manager' && <WorkerManagerModal />}
         {modalType === 'worker_detail' && <WorkerDetailModal />}
         {modalType === 'backup_manager' && <BackupManagerModal />}
+        {modalType === 'app_update' && <AppUpdateModal />}
       </React.Suspense>
       <NotificationToast />
       <LoadingOverlay />

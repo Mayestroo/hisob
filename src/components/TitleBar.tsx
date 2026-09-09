@@ -1,5 +1,5 @@
 import React from 'react';
-import { Save, Download, Database, Users, Calendar, ShieldCheck, ShieldAlert, Clock, Code2, Sun, Moon, Building2 } from 'lucide-react';
+import { Save, Download, Database, Users, Calendar, ShieldCheck, ShieldAlert, Clock, Code2, Sun, Moon, Building2, Sparkles } from 'lucide-react';
 import { useWorkbookStore } from '../store/workbookStore';
 import { useTrialCountdown } from '../hooks/useTrialCountdown';
 import { RoleBadge } from './RoleBadge';
@@ -15,6 +15,7 @@ export const TitleBar: React.FC = () => {
   const isSaving = useWorkbookStore((s) => s.isSaving);
   const openModal = useWorkbookStore((s) => s.openModal);
   const licenseStatus = useWorkbookStore((s) => s.licenseStatus);
+  const availableUpdate = useWorkbookStore((s) => s.availableUpdate);
   const theme = useWorkbookStore((s) => s.theme);
   const toggleTheme = useWorkbookStore((s) => s.toggleTheme);
   const countdown = useTrialCountdown(licenseStatus);
@@ -97,6 +98,33 @@ export const TitleBar: React.FC = () => {
         >
           {theme === 'dark' ? <Sun size={14} color="#fde047" /> : <Moon size={14} color="#cbd5e1" />}
         </button>
+
+        {/* In-App Update Badge Button */}
+        {availableUpdate && (
+          <button
+            onClick={() => openModal({ type: 'app_update' })}
+            className="quick-btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.45) 100%)',
+              border: '1px solid rgba(52, 211, 153, 0.6)',
+              color: '#a7f3d0',
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-full)',
+              cursor: 'pointer',
+              boxShadow: '0 0 12px rgba(16, 185, 129, 0.4)',
+              animation: 'pulse 2s infinite'
+            }}
+            title={`Yangi versiya mavjud: v${availableUpdate.version}. Bosib yangilang.`}
+          >
+            <Sparkles size={14} color="#34d399" />
+            <span>Yangi versiya: v{availableUpdate.version}</span>
+          </button>
+        )}
 
         {/* Role Badge (RBAC) */}
         <RoleBadge />

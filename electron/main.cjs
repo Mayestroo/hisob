@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
+const http = require('http');
+const child_process = require('child_process');
 const license = require('./license.cjs');
 
 let mainWindow;
@@ -420,6 +423,118 @@ ipcMain.handle('print-html', async (event, { html, title }) => {
       });
     });
   });
+});
+
+// ==================== AUTO UPDATER ====================
+function downloadFile(url, destPath, onProgress, maxRedirects = 5) {
+  return new Promise((resolve, reject) => {
+    if (maxRedirects <= 0) return reject(new Error('Too many redirects while downloading update'));
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch (e) {
+      return reject(new Error('Noto\'g\'ri URL formati: ' + url));
+    }
+
+    const client = parsedUrl.protocol === 'https:' ? https : http;
+
+    const req = client.get(url, (res) => {
+      // Handle HTTP redirects (301, 302, 303, 307, 308)
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        let nextUrl = res.headers.location;
+        if (!nextUrl.startsWith('http')) {
+          nextUrl = new URL(nextUrl, url).toString();
+        }
+        res.resume();
+        return downloadFile(nextUrl, destPath, onProgress, maxRedirects - 1)
+          .then(resolve)
+          .catch(reject);
+      }
+
+      if (res.statusCode !== 200) {
+        return reject(new Error(`Yuklab olishda xatolik: HTTP ${res.statusCode}`));
+      }
+
+      const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
+      let downloadedBytes = 0;
+      const fileStream = fs.createWriteStream(destPath);
+
+      res.on('data', (chunk) => {
+        downloadedBytes += chunk.length;
+        if (onProgress) {
+          const percent = totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0;
+          onProgress({ downloadedBytes, totalBytes, percent });
+        }
+      });
+
+      res.pipe(fileStream);
+
+      fileStream.on('finish', () => {
+        fileStream.close(() => resolve(destPath));
+      });
+
+      fileStream.on('error', (err) => {
+        try { if (fs.existsSync(destPath)) fs.unlinkSync(destPath); } catch {}
+        reject(err);
+      });
+    });
+
+    req.on('error', (err) => {
+      try { if (fs.existsSync(destPath)) fs.unlinkSync(destPath); } catch {}
+      reject(err);
+    });
+
+    req.setTimeout(60000, () => {
+      req.destroy();
+      reject(new Error('Yuklab olish vaqti tugadi (Timeout)'));
+    });
+  });
+}
+
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
+ipcMain.handle('download-app-update', async (event, { url, version }) => {
+  if (!url) return { success: false, error: 'URL kiritilmagan' };
+  const tempDir = app.getPath('temp');
+  const safeVer = (version || 'latest').replace(/[^a-zA-Z0-9.-]/g, '_');
+  const destPath = path.join(tempDir, `Novda-Update-${safeVer}.exe`);
+
+  try {
+    await downloadFile(url, destPath, (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app-update-progress', progress);
+      }
+    });
+    return { success: true, filePath: destPath };
+  } catch (err) {
+    console.error('Update download error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('install-app-update', async (event, { filePath }) => {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return { success: false, error: 'O\'rnatuvchi fayli topilmadi' };
+  }
+  try {
+    const child = child_process.spawn(filePath, [], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
+
+    setTimeout(() => {
+      app.quit();
+    }, 400);
+
+    return { success: true };
+  } catch (err) {
+    console.error('Update install error:', err);
+    return { success: false, error: err.message };
+  }
 });
 
 // ==================== WINDOW ====================

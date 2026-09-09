@@ -16,5 +16,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLicenseCompany: (companyId, companyName) => ipcRenderer.invoke('license-set-company', { companyId, companyName }),
   getDataDir: () => ipcRenderer.invoke('get-data-dir'),
   printHtml: (options) => ipcRenderer.invoke('print-html', options),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  downloadAppUpdate: (options) => ipcRenderer.invoke('download-app-update', options),
+  installAppUpdate: (options) => ipcRenderer.invoke('install-app-update', options),
+  onUpdateProgress: (callback) => {
+    const handler = (event, progress) => callback(progress);
+    ipcRenderer.on('app-update-progress', handler);
+    return () => ipcRenderer.removeListener('app-update-progress', handler);
+  },
   isElectron: true
 });

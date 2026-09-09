@@ -1,10 +1,11 @@
 import React from 'react';
 import { useWorkbookStore } from '../../store/workbookStore';
-import { X, Code2, Send, Globe, Bot, Smartphone, Cpu, CheckCircle2, Sparkles } from 'lucide-react';
+import { X, Code2, Send, Globe, Bot, Smartphone, Cpu, CheckCircle2, Sparkles, RefreshCw } from 'lucide-react';
 
 export const DeveloperModal: React.FC = () => {
   const modalType = useWorkbookStore((s) => s.modalState.type);
   const closeModal = useWorkbookStore((s) => s.closeModal);
+  const openModal = useWorkbookStore((s) => s.openModal);
 
   if (modalType !== 'developer_info') return null;
 
@@ -206,6 +207,30 @@ export const DeveloperModal: React.FC = () => {
                 <span>Doimiy texnik qo'llab-quvvatlash</span>
               </div>
             </div>
+          </div>
+
+          {/* Check Updates Button */}
+          <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+            <button
+              onClick={() => openModal({ type: 'app_update' })}
+              className="soft-btn soft-btn-secondary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                width: '100%',
+                padding: '10px 16px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-subtle)'
+              }}
+            >
+              <RefreshCw size={15} color="var(--primary)" />
+              <span>Dastur yangilanishini tekshirish</span>
+            </button>
           </div>
 
           {/* Telegram Action Button */}
