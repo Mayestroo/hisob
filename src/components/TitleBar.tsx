@@ -105,47 +105,6 @@ export const TitleBar: React.FC = () => {
         {/* Real-time Connection Status & Offline Queue */}
         <ConnectionStatus />
 
-        {/* Update Check / Status Icon Button */}
-        <button
-          onClick={() => openModal({ type: 'app_update' })}
-          className="quick-btn"
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '28px',
-            height: '28px',
-            padding: 0,
-            borderRadius: 'var(--radius-full)',
-            background: availableUpdate ? 'rgba(16, 185, 129, 0.22)' : 'rgba(255, 255, 255, 0.08)',
-            border: availableUpdate ? '1px solid rgba(52, 211, 153, 0.65)' : '1px solid rgba(255, 255, 255, 0.18)',
-            color: availableUpdate ? '#34d399' : '#cbd5e1',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            backdropFilter: 'blur(8px)',
-            boxShadow: availableUpdate ? '0 0 10px rgba(16, 185, 129, 0.45)' : 'none'
-          }}
-          title={availableUpdate ? `Yangi versiya mavjud: v${availableUpdate.version}. Bosib yangilang.` : "Dastur yangilanishlarini tekshirish"}
-        >
-          <RefreshCw size={14} color={availableUpdate ? '#34d399' : '#cbd5e1'} />
-          {/* Notification dot badge when update is available */}
-          {availableUpdate && (
-            <span
-              style={{
-                position: 'absolute',
-                top: '-2px',
-                right: '-2px',
-                width: '9px',
-                height: '9px',
-                backgroundColor: '#10b981',
-                borderRadius: '50%',
-                border: '2px solid #0f172a',
-                boxShadow: '0 0 6px #10b981'
-              }}
-            />
-          )}
-        </button>
 
         {/* License / Trial Badge */}
         <div
@@ -278,6 +237,48 @@ export const TitleBar: React.FC = () => {
           }} />
           <span>{isSaving ? 'Saqlanmoqda...' : isServerConnected ? 'Server faol' : 'Lokal xotira'}</span>
         </div>
+
+        {/* Update Check / Status Icon Button */}
+        <button
+          onClick={() => openModal({ type: 'app_update' })}
+          className="quick-btn"
+          style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '28px',
+            padding: 0,
+            borderRadius: 'var(--radius-full)',
+            background: availableUpdate ? 'rgba(16, 185, 129, 0.22)' : 'rgba(255, 255, 255, 0.08)',
+            border: availableUpdate ? '1px solid rgba(52, 211, 153, 0.65)' : '1px solid rgba(255, 255, 255, 0.18)',
+            color: availableUpdate ? '#34d399' : '#cbd5e1',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            backdropFilter: 'blur(8px)',
+            boxShadow: availableUpdate ? '0 0 10px rgba(16, 185, 129, 0.45)' : 'none'
+          }}
+          title={availableUpdate ? `Yangi versiya mavjud: v${availableUpdate.version}. Bosib yangilang.` : "Dastur yangilanishlarini tekshirish"}
+        >
+          <RefreshCw size={14} color={availableUpdate ? '#34d399' : '#cbd5e1'} />
+          {/* Notification dot badge when update is available */}
+          {availableUpdate && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '-2px',
+                right: '-2px',
+                width: '9px',
+                height: '9px',
+                backgroundColor: '#10b981',
+                borderRadius: '50%',
+                border: '2px solid #0f172a',
+                boxShadow: '0 0 6px #10b981'
+              }}
+            />
+          )}
+        </button>
       </div>
     </header>
   );
