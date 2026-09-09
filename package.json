@@ -1,7 +1,7 @@
 {
   "name": "novda-hisob-kitob",
   "private": true,
-  "version": "1.5.10",
+  "version": "1.5.11",
   "main": "electron/main.cjs",
   "author": "Novda",
   "description": "Novda Hisob-Kitob Tizimi",
@@ -27,7 +27,7 @@
       {
         "provider": "github",
         "owner": "Mayestroo",
-        "repo": "hisob"
+        "repo": "hisob-releases"
       }
     ],
     "electronVersion": "44.0.0",

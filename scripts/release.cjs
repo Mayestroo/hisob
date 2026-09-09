@@ -158,7 +158,7 @@ async function main() {
   // Step 5: Upload to GitHub Releases
   console.log(`\n☁️ [5/5] GitHub Releasesga yuklanmoqda...`);
   const releaseNotes = customNotes || `Novda Hisob-Kitob Tizimi v${newVersion} rasmiy yangilanishi.`;
-  const repo = 'Mayestroo/hisob';
+  const repo = 'Mayestroo/hisob-releases';
 
   try {
     execSync(`gh release create v${newVersion} "${exePath}" --repo ${repo} --title "v${newVersion}" --notes "${releaseNotes}"`, {
