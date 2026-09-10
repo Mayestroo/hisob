@@ -1,5 +1,18 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Edit3, Copy, FileSpreadsheet, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  LayoutDashboard,
+  Wallet,
+  FileText,
+  FileSpreadsheet,
+  Layers,
+  Plus,
+  Search,
+  MoreVertical,
+  Edit3,
+  Copy,
+  Trash2,
+  X
+} from 'lucide-react';
 import { useWorkbookStore } from '../store/workbookStore';
 import { SYSTEM_SHEET_NAMES } from '../constants/sheetConstants';
 import { ModelConfig } from '../types/workbook';
@@ -19,8 +32,8 @@ export const SheetTabs: React.FC = () => {
   const renameModel = useWorkbookStore((s) => s.renameModel);
   const addModel = useWorkbookStore((s) => s.addModel);
   const addNotification = useWorkbookStore((s) => s.addNotification);
-  const theme = useWorkbookStore((s) => s.theme);
-  const tabsContainerRef = useRef<HTMLDivElement>(null);
+
+  const [searchFilter, setSearchFilter] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   // In-app modal states (replaces window.prompt and window.confirm which fail in Electron)
@@ -28,13 +41,7 @@ export const SheetTabs: React.FC = () => {
   const [renameValue, setRenameValue] = useState('');
   const [deleteTargetModel, setDeleteTargetModel] = useState<ModelConfig | null>(null);
 
-  const scrollTabs = (offset: number) => {
-    if (tabsContainerRef.current) {
-      tabsContainerRef.current.scrollBy({ left: offset, behavior: 'smooth' });
-    }
-  };
-
-  // Close context menu on any outside click or ESC key
+  // Close context menu on outside click or ESC
   useEffect(() => {
     const handleOutsideClick = () => setContextMenu(null);
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,72 +59,6 @@ export const SheetTabs: React.FC = () => {
     };
   }, []);
 
-  // Dynamic sheet list: System sheets, then Model pairs
-  const sheetList: string[] = [...SYSTEM_SHEET_NAMES];
-  for (const m of models) {
-    sheetList.push(m.name);
-    sheetList.push(m.hisobSheetName);
-  }
-
-  const isDark = theme === 'dark';
-
-  const getSheetColor = (name: string, isActive: boolean) => {
-    if (!isActive) return { bg: 'transparent', text: 'var(--text-secondary)', dot: 'var(--text-muted)' };
-    
-    if (name === 'Umumiy') {
-      return { 
-        bg: isDark ? 'rgba(52, 211, 153, 0.18)' : '#ecfdf5', 
-        text: isDark ? '#34d399' : '#059669', 
-        dot: '#10b981' 
-      };
-    }
-    if (name === 'Patta') {
-      return { 
-        bg: isDark ? 'rgba(245, 158, 11, 0.18)' : '#fef3c7', 
-        text: isDark ? '#fbbf24' : '#d97706', 
-        dot: '#f59e0b' 
-      };
-    }
-    if (name === 'Patta-hisob') {
-      return { 
-        bg: isDark ? 'rgba(6, 182, 212, 0.18)' : '#ecfeff', 
-        text: isDark ? '#38bdf8' : '#0891b2', 
-        dot: '#06b6d4' 
-      };
-    }
-    if (name === 'Konveyer') {
-      return { 
-        bg: isDark ? 'rgba(139, 92, 246, 0.18)' : '#f5f3ff', 
-        text: isDark ? '#a78bfa' : '#7c3aed', 
-        dot: '#8b5cf6' 
-      };
-    }
-    if (name.endsWith('-hisob')) {
-      return { 
-        bg: isDark ? 'rgba(99, 102, 241, 0.18)' : '#eef2ff', 
-        text: isDark ? '#818cf8' : '#4f46e5', 
-        dot: '#6366f1' 
-      };
-    }
-    return { 
-      bg: isDark ? 'rgba(56, 189, 248, 0.18)' : '#f0f9ff', 
-      text: isDark ? '#38bdf8' : '#0284c7', 
-      dot: '#0ea5e9' 
-    };
-  };
-
-  const handleTabContextMenu = useCallback((e: React.MouseEvent, name: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const xPos = Math.max(10, Math.min(e.clientX, window.innerWidth - 230));
-    setContextMenu({
-      x: xPos,
-      y: e.clientY,
-      sheetName: name
-    });
-  }, []);
-
   const getTargetModel = (name: string) => {
     return models.find((m) => m.name === name || m.hisobSheetName === name);
   };
@@ -125,6 +66,19 @@ export const SheetTabs: React.FC = () => {
   const isSystemSheet = (name: string) => {
     return (SYSTEM_SHEET_NAMES as readonly string[]).includes(name);
   };
+
+  const handleTabContextMenu = useCallback((e: React.MouseEvent, name: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const xPos = Math.max(10, Math.min(e.clientX, window.innerWidth - 240));
+    const yPos = Math.max(10, Math.min(e.clientY, window.innerHeight - 260));
+    setContextMenu({
+      x: xPos,
+      y: yPos,
+      sheetName: name
+    });
+  }, []);
 
   // Context Menu Actions
   const handleOpenSheet = () => {
@@ -209,80 +163,251 @@ export const SheetTabs: React.FC = () => {
     setContextMenu(null);
   };
 
+  // Filtered models list
+  const filteredModels = models.filter((m) =>
+    !searchFilter.trim() ||
+    m.name.toLowerCase().includes(searchFilter.toLowerCase().trim()) ||
+    m.hisobSheetName.toLowerCase().includes(searchFilter.toLowerCase().trim())
+  );
+
   return (
-    <nav className="excel-bottom-bar" onContextMenu={(e) => handleTabContextMenu(e, activeSheet)}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <button className="tab-nav-btn" onClick={() => scrollTabs(-150)} title="Chapga siljitish">
-          <ChevronLeft size={16} />
-        </button>
-        <button className="tab-nav-btn" onClick={() => scrollTabs(150)} title="O'ngga siljitish">
-          <ChevronRight size={16} />
+    <aside
+      className="excel-sidebar"
+      onContextMenu={(e) => handleTabContextMenu(e, activeSheet)}
+    >
+      {/* 1. Header: Section title + Add model button */}
+      <div className="excel-sidebar-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <LayoutDashboard size={16} color="var(--primary)" />
+          <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
+            Varaqlar
+          </span>
+        </div>
+        <button
+          onClick={() => openModal({ type: 'new_model' })}
+          className="soft-btn soft-btn-primary"
+          style={{
+            padding: '3px 8px',
+            fontSize: '11px',
+            fontWeight: 700,
+            borderRadius: 'var(--radius-sm)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+          title="Yangi model qo'shish (+)"
+        >
+          <Plus size={12} />
+          <span>Model</span>
         </button>
       </div>
 
-      <div className="sheet-tabs-container" ref={tabsContainerRef}>
-        {sheetList.map((name) => {
-          const isActive = activeSheet === name;
-          const colors = getSheetColor(name, isActive);
+      {/* 2. Quick Search (visible if 3+ models) */}
+      {models.length >= 3 && (
+        <div style={{ padding: '6px 8px 2px', flexShrink: 0 }}>
+          <div style={{ position: 'relative' }}>
+            <Search
+              size={13}
+              color="var(--text-muted)"
+              style={{ position: 'absolute', left: '8px', top: '7px', pointerEvents: 'none' }}
+            />
+            <input
+              type="text"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Model qidirish..."
+              className="soft-input"
+              style={{
+                height: '26px',
+                paddingLeft: '26px',
+                paddingRight: searchFilter ? '22px' : '8px',
+                fontSize: '11.5px',
+                borderRadius: 'var(--radius-sm)',
+                width: '100%'
+              }}
+            />
+            {searchFilter && (
+              <button
+                type="button"
+                onClick={() => setSearchFilter('')}
+                style={{
+                  position: 'absolute',
+                  right: '6px',
+                  top: '6px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  padding: 0
+                }}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Main Navigation Content Area */}
+      <div className="excel-sidebar-content">
+        {/* Section: Asosiy Varaqlar */}
+        <div className="excel-sidebar-section-title">
+          <span>Asosiy</span>
+        </div>
+
+        <button
+          className={`excel-sidebar-item ${activeSheet === 'Umumiy' ? 'active' : ''}`}
+          onClick={() => setActiveSheet('Umumiy')}
+          onContextMenu={(e) => handleTabContextMenu(e, 'Umumiy')}
+          title="Umumiy oylik hisobot va ishchilar maoshi"
+        >
+          <Wallet size={15} color={activeSheet === 'Umumiy' ? 'var(--primary)' : '#10b981'} />
+          <span style={{ flex: 1, fontWeight: activeSheet === 'Umumiy' ? 700 : 500 }}>
+            Umumiy Hisobot
+          </span>
+        </button>
+
+        <button
+          className={`excel-sidebar-item ${activeSheet === 'Patta' ? 'active' : ''}`}
+          onClick={() => setActiveSheet('Patta')}
+          onContextMenu={(e) => handleTabContextMenu(e, 'Patta')}
+          title="Pattalar chop etish va partiyalarni boshqarish"
+        >
+          <FileText size={15} color={activeSheet === 'Patta' ? 'var(--primary)' : '#f59e0b'} />
+          <span style={{ flex: 1, fontWeight: activeSheet === 'Patta' ? 700 : 500 }}>
+            Patta (Chiqarish)
+          </span>
+        </button>
+
+        <button
+          className={`excel-sidebar-item ${activeSheet === 'Patta-hisob' ? 'active' : ''}`}
+          onClick={() => setActiveSheet('Patta-hisob')}
+          onContextMenu={(e) => handleTabContextMenu(e, 'Patta-hisob')}
+          title="Topshirilgan pattalar jurnali va arxivi"
+        >
+          <FileSpreadsheet size={15} color={activeSheet === 'Patta-hisob' ? 'var(--primary)' : '#06b6d4'} />
+          <span style={{ flex: 1, fontWeight: activeSheet === 'Patta-hisob' ? 700 : 500 }}>
+            Patta-Hisob (Jurnal)
+          </span>
+        </button>
+
+        <button
+          className={`excel-sidebar-item ${activeSheet === 'Konveyer' || activeSheet === 'Конвейер' ? 'active' : ''}`}
+          onClick={() => setActiveSheet('Konveyer')}
+          onContextMenu={(e) => handleTabContextMenu(e, 'Konveyer')}
+          title="Konveyer operatsiyalari va taqsimoti"
+        >
+          <Layers size={15} color={activeSheet === 'Konveyer' || activeSheet === 'Конвейер' ? 'var(--primary)' : '#8b5cf6'} />
+          <span style={{ flex: 1, fontWeight: activeSheet === 'Konveyer' || activeSheet === 'Конвейер' ? 700 : 500 }}>
+            Konveyer
+          </span>
+        </button>
+
+        {/* Section: Modellar */}
+        <div className="excel-sidebar-section-title" style={{ marginTop: '8px' }}>
+          <span>Modellar ({models.length})</span>
+        </div>
+
+        {filteredModels.map((m) => {
+          const isPattaActive = activeSheet === m.name;
+          const isHisobActive = activeSheet === m.hisobSheetName;
 
           return (
-            <button
-              key={name}
-              className={`sheet-tab ${isActive ? 'active' : ''}`}
-              onClick={() => setActiveSheet(name)}
-              onContextMenu={(e) => handleTabContextMenu(e, name)}
-              title={`${name} (O'ng tugma: qo'shimcha amallar)`}
+            <div
+              key={m.id}
               style={{
-                backgroundColor: isActive ? colors.bg : undefined,
-                color: isActive ? colors.text : undefined
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1px',
+                marginBottom: '4px',
+                background: (isPattaActive || isHisobActive) ? 'var(--bg-surface-subtle)' : 'transparent',
+                borderRadius: 'var(--radius-sm)',
+                padding: '2px 0'
               }}
             >
-              <span
+              {/* Model Patta Item (Primary) */}
+              <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                <button
+                  className={`excel-sidebar-item ${isPattaActive ? 'active' : ''}`}
+                  onClick={() => setActiveSheet(m.name)}
+                  onContextMenu={(e) => handleTabContextMenu(e, m.name)}
+                  title={`${m.name} — Patta kiritish varag'i (O'ng tugma: amallar)`}
+                  style={{ flex: 1 }}
+                >
+                  <FileText size={14} color={isPattaActive ? 'var(--primary)' : '#0284c7'} />
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {m.name}
+                  </span>
+                </button>
+
+                {/* 3-dots Context Menu button */}
+                <button
+                  type="button"
+                  onClick={(e) => handleTabContextMenu(e, m.name)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '24px',
+                    height: '28px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    borderRadius: 'var(--radius-sm)'
+                  }}
+                  title="Model amallari (nomini o'zgartirish, o'chirish...)"
+                >
+                  <MoreVertical size={13} />
+                </button>
+              </div>
+
+              {/* Model Hisob Item (Indented) */}
+              <button
+                className={`excel-sidebar-item ${isHisobActive ? 'active' : ''}`}
+                onClick={() => setActiveSheet(m.hisobSheetName)}
+                onContextMenu={(e) => handleTabContextMenu(e, m.hisobSheetName)}
+                title={`${m.hisobSheetName} — Model hisob-kitob varag'i`}
                 style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: colors.dot,
-                  flexShrink: 0
+                  paddingLeft: '26px',
+                  fontSize: '11.5px',
+                  color: isHisobActive ? 'var(--primary)' : 'var(--text-muted)'
                 }}
-              />
-              <span>{name}</span>
-            </button>
+              >
+                <FileSpreadsheet size={13} color={isHisobActive ? 'var(--primary)' : '#6366f1'} />
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {m.name}-hisob
+                </span>
+              </button>
+            </div>
           );
         })}
 
-        {/* Modern Plus Button inside tabs list */}
-        <button
-          onClick={() => openModal({ type: 'new_model' })}
-          className="sheet-tab"
-          style={{
-            color: 'var(--primary)',
-            fontWeight: 600,
-            background: 'var(--primary-light)',
-            border: '1px dashed rgba(16, 185, 129, 0.4)'
-          }}
-          title="Yangi model va varaqlar qo'shish (+)"
-        >
-          <Plus size={13} />
-          <span>Yangi model</span>
-        </button>
+        {filteredModels.length === 0 && (
+          <div style={{ padding: '12px 8px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+            Model topilmadi
+          </div>
+        )}
       </div>
 
-      <div className="status-bar-right">
+      {/* 4. Footer Status Info */}
+      <div className="excel-sidebar-footer">
+        <span>Jami: {models.length} ta model</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
           Tayyor
         </span>
       </div>
 
-      {/* Modern Excel Right-Click Context Menu */}
+      {/* Modern Context Menu */}
       {contextMenu && (
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',
             left: `${contextMenu.x}px`,
-            bottom: '42px',
+            top: `${contextMenu.y}px`,
             zIndex: 9999,
             minWidth: '210px',
             backgroundColor: 'var(--bg-surface)',
@@ -373,8 +498,8 @@ export const SheetTabs: React.FC = () => {
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-subtle)')}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            <Plus size={14} color="var(--accent-blue)" />
-            <span>Yangi model qo'shish...</span>
+            <Plus size={14} color="var(--status-teal)" />
+            <span>Yangi model qo'shish</span>
           </button>
 
           {/* 3. Rename Model (Model sheets only) */}
@@ -615,6 +740,6 @@ export const SheetTabs: React.FC = () => {
           </div>
         </div>
       )}
-    </nav>
+    </aside>
   );
 };

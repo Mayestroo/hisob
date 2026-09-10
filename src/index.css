@@ -670,92 +670,121 @@ input[type=number] {
   z-index: 2;
 }
 
-/* 5. Bottom Navigation Bar */
-.excel-bottom-bar {
-  height: 44px;
+/* 5. Left Sidebar Navigation */
+.excel-sidebar {
+  width: 220px;
   background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  z-index: 20;
+  box-shadow: 2px 0 8px rgba(15, 23, 42, 0.02);
+}
+
+[data-theme="dark"] .excel-sidebar {
+  background-color: #0b1329;
+  border-right-color: #1e293b;
+}
+
+.excel-sidebar-header {
+  padding: 12px 14px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.excel-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 8px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.excel-sidebar-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.excel-sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+}
+
+.excel-sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.excel-sidebar-section-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  padding: 10px 8px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.excel-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.excel-sidebar-item:hover {
+  background-color: var(--bg-surface-subtle);
+  color: var(--text-primary);
+}
+
+.excel-sidebar-item.active {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+  border-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.08);
+}
+
+.excel-sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background-color: var(--primary);
+}
+
+.excel-sidebar-footer {
+  padding: 8px 12px;
   border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  flex-shrink: 0;
-  box-shadow: 0 -2px 8px rgba(15, 23, 42, 0.03);
-  z-index: 30;
-}
-
-.sheet-tabs-container {
-  display: flex;
-  align-items: center;
-  overflow-x: auto;
-  scrollbar-width: none;
-  gap: 6px;
-  flex: 1;
-  padding: 0 8px;
-}
-
-.sheet-tabs-container::-webkit-scrollbar {
-  display: none;
-}
-
-.sheet-tab {
-  padding: 6px 14px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: var(--bg-surface-subtle);
-  border: 1px solid transparent;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  white-space: nowrap;
-  user-select: none;
-  transition: all var(--transition-fast);
-}
-
-.sheet-tab:hover {
-  background-color: #e2e8f0;
-  color: var(--text-primary);
-  transform: translateY(-1px);
-}
-
-.sheet-tab.active {
-  background-color: var(--primary-light);
-  color: var(--primary);
-  font-weight: 700;
-  border-color: rgba(16, 185, 129, 0.2);
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.12);
-}
-
-.tab-nav-btn {
-  background: var(--bg-surface-subtle);
-  border: 1px solid transparent;
-  padding: 5px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition-fast);
-}
-
-.tab-nav-btn:hover {
-  background-color: #e2e8f0;
-  color: var(--text-primary);
-}
-
-.status-bar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 12px;
-  color: var(--text-muted);
   font-size: 11px;
+  color: var(--text-muted);
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 /* 6. Soft UI Modals */

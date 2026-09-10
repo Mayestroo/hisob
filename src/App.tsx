@@ -239,22 +239,25 @@ export const App: React.FC = () => {
       {/* Title Bar */}
       <TitleBar />
 
-      {/* Main Active Sheet Content */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <React.Suspense
-          fallback={
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '14px', gap: '8px' }}>
-              <span className="codicon codicon-loading codicon-modifier-spin" style={{ fontSize: '18px' }} />
-              Yuklanmoqda...
-            </div>
-          }
-        >
-          {renderActiveSheetView()}
-        </React.Suspense>
-      </div>
+      {/* Main Body Layout: Left Sidebar + Active Sheet Content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', position: 'relative' }}>
+        {/* Left Sidebar Sheet Navigation */}
+        <SheetTabs />
 
-      {/* Sheet Tabs */}
-      <SheetTabs />
+        {/* Main Active Sheet Content */}
+        <main style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <React.Suspense
+            fallback={
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '14px', gap: '8px' }}>
+                <span className="codicon codicon-loading codicon-modifier-spin" style={{ fontSize: '18px' }} />
+                Yuklanmoqda...
+              </div>
+            }
+          >
+            {renderActiveSheetView()}
+          </React.Suspense>
+        </main>
+      </div>
 
       {/* Modals & Toasts & Loading Overlay */}
       <LicenseActivationModal />
