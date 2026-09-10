@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Edit3, Copy, FileSpreadsheet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Edit3, Copy, FileSpreadsheet, X } from 'lucide-react';
 import { useWorkbookStore } from '../store/workbookStore';
 import { SYSTEM_SHEET_NAMES } from '../constants/sheetConstants';
+import { ModelConfig } from '../types/workbook';
 
 interface ContextMenuState {
   x: number;
@@ -21,6 +22,11 @@ export const SheetTabs: React.FC = () => {
   const theme = useWorkbookStore((s) => s.theme);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // In-app modal states (replaces window.prompt and window.confirm which fail in Electron)
+  const [renameTargetModel, setRenameTargetModel] = useState<ModelConfig | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [deleteTargetModel, setDeleteTargetModel] = useState<ModelConfig | null>(null);
 
   const scrollTabs = (offset: number) => {
     if (tabsContainerRef.current) {
@@ -143,14 +149,15 @@ export const SheetTabs: React.FC = () => {
       return;
     }
 
-    const confirmDelete = window.confirm(
-      `«${model.name}» modelini va uning barcha tegishli varaqlari (${model.name}, ${model.hisobSheetName}) hamda hisob-kitoblarini butunlay o'chirishni tasdiqlaysizmi?`
-    );
-
-    if (confirmDelete) {
-      deleteModel(model.id);
-    }
+    setDeleteTargetModel(model);
     setContextMenu(null);
+  };
+
+  const confirmDeleteModel = () => {
+    if (deleteTargetModel) {
+      deleteModel(deleteTargetModel.id);
+      setDeleteTargetModel(null);
+    }
   };
 
   const handleRenameSheet = () => {
@@ -162,11 +169,23 @@ export const SheetTabs: React.FC = () => {
       return;
     }
 
-    const newName = window.prompt(`«${model.name}» modelining yangi nomini kiriting:`, model.name);
-    if (newName && newName.trim() && newName.trim() !== model.name) {
-      renameModel(model.id, newName.trim());
-    }
+    setRenameValue(model.name);
+    setRenameTargetModel(model);
     setContextMenu(null);
+  };
+
+  const submitRename = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!renameTargetModel) return;
+    const clean = renameValue.trim();
+    if (!clean) {
+      addNotification('warning', 'Ogohlantirish', 'Model nomi bo\'sh bo\'lishi mumkin emas.');
+      return;
+    }
+    if (clean !== renameTargetModel.name) {
+      renameModel(renameTargetModel.id, clean);
+    }
+    setRenameTargetModel(null);
   };
 
   const handleDuplicateModel = () => {
@@ -462,6 +481,138 @@ export const SheetTabs: React.FC = () => {
               <span>O'chirib bo'lmaydi (Tizim)</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modern In-App Rename Modal (100% compatible with Windows/Electron) */}
+      {renameTargetModel && (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 9999 }}
+          onClick={() => setRenameTargetModel(null)}
+        >
+          <div
+            className="modal-card"
+            style={{ maxWidth: '440px', width: '92%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
+                <Edit3 size={18} />
+                <span style={{ fontSize: '15px', fontWeight: 800 }}>Model nomini o'zgartirish</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRenameTargetModel(null)}
+                className="soft-btn soft-btn-secondary"
+                style={{ width: '28px', height: '28px', padding: 0, borderRadius: 'var(--radius-full)' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <form onSubmit={submitRename}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                    «{renameTargetModel.name}» uchun yangi nom:
+                  </label>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setRenameTargetModel(null);
+                    }}
+                    className="soft-input"
+                    style={{ width: '100%', height: '36px', fontSize: '14px', fontWeight: 600 }}
+                    placeholder="Yangi nom..."
+                  />
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                  Eslatma: Modelga tegishli barcha varaqlar (<strong>{renameValue || '...'}</strong> va <strong>{renameValue || '...'}-hisob</strong>) hamda hisob-kitoblar avtomatik yangilanadi.
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 18px' }}>
+                <button
+                  type="button"
+                  onClick={() => setRenameTargetModel(null)}
+                  className="soft-btn soft-btn-secondary"
+                  style={{ padding: '6px 14px', fontSize: '13px' }}
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
+                  disabled={!renameValue.trim()}
+                  className="soft-btn soft-btn-primary"
+                  style={{ padding: '6px 16px', fontSize: '13px', fontWeight: 700 }}
+                >
+                  Saqlash
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modern In-App Delete Confirmation Modal */}
+      {deleteTargetModel && (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 9999 }}
+          onClick={() => setDeleteTargetModel(null)}
+        >
+          <div
+            className="modal-card"
+            style={{ maxWidth: '460px', width: '92%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
+                <Trash2 size={18} />
+                <span style={{ fontSize: '15px', fontWeight: 800 }}>Modelni o'chirish</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteTargetModel(null)}
+                className="soft-btn soft-btn-secondary"
+                style={{ width: '28px', height: '28px', padding: 0, borderRadius: 'var(--radius-full)' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.5' }}>
+                Haqiqatan ham <strong>«{deleteTargetModel.name}»</strong> modelini, uning barcha tegishli varaqlari (<strong>{deleteTargetModel.name}</strong> va <strong>{deleteTargetModel.hisobSheetName}</strong>) hamda hisob-kitoblarini butunlay o'chirmoqchimisiz?
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
+                Ogohlantirish: Ushbu amalni ortga qaytarib bo'lmaydi!
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '12px 18px' }}>
+              <button
+                type="button"
+                onClick={() => setDeleteTargetModel(null)}
+                className="soft-btn soft-btn-secondary"
+                style={{ padding: '6px 14px', fontSize: '13px' }}
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteModel}
+                className="soft-btn"
+                style={{ padding: '6px 16px', fontSize: '13px', fontWeight: 700, background: '#ef4444', color: '#fff' }}
+              >
+                Ha, o'chirilsin
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </nav>
