@@ -149,25 +149,16 @@ export function mergeCloudSyncData(
           workerMap.set(w.id, { ...w, ...existingById });
         }
       } else {
-        // ID bir xil, lekin ismlar har xil
+        // ID bir xil, lekin ismlar har xil (tahrirlangan holat)
         const remoteTime = (w as any).updatedAt || 0;
         const localTime = (existingById as any).updatedAt || 0;
 
-        if (remoteTime > localTime && remoteTime > 0) {
+        if (remoteTime > localTime) {
           // Masofaviy tomonda ishchining F.I.O si tahrirlangan (yangilangan)
           workerMap.set(w.id, { ...existingById, ...w });
-        } else if (localTime > remoteTime && localTime > 0) {
-          // Lokal tomondagi tahrir yangiroq
-          workerMap.set(w.id, { ...w, ...existingById });
         } else {
-          // Haqiqatan alohida 2 ta yangi ishchi oflayn qo'shilgan holat
-          let nextAvailableId = 1;
-          while (workerMap.has(nextAvailableId)) {
-            nextAvailableId++;
-          }
-          const reindexedWorker: Worker = { ...w, id: nextAvailableId };
-          workerMap.set(nextAvailableId, reindexedWorker);
-          reindexedWorkerIdMap.set(w.id, nextAvailableId);
+          // Lokal tomondagi tahrir yangiroq yoki teng
+          workerMap.set(w.id, { ...w, ...existingById });
         }
       }
     }
