@@ -175,7 +175,7 @@ export function validateTicketForSubmission(
   const filledEntries: Array<{ opName: string; workerId: number }> = [];
   for (const [opName, wVal] of Object.entries(form.entries)) {
     if (wVal !== '' && wVal !== undefined && wVal !== null) {
-      const wId = Number(wVal);
+      let wId = Number(wVal);
       if (isNaN(wId) || wId <= 0) {
         return {
           isValid: false,
@@ -183,6 +183,16 @@ export function validateTicketForSubmission(
           title: "Noto'g'ri ishchi kodi",
           message: `Ishchi kodi noto'g'ri: "${wVal}"`
         };
+      }
+      const LEGACY_REMAP: Record<number, number> = {
+        200: 112,
+        201: 68,
+        295: 189,
+        303: 12,
+        392: 71
+      };
+      if (wId >= 200 && LEGACY_REMAP[wId]) {
+        wId = LEGACY_REMAP[wId];
       }
       const workerExists = workers.some((w) => w.id === wId);
       if (!workerExists) {

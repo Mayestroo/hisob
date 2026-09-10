@@ -258,17 +258,25 @@ export function sanitizePrintedPartyHistory(history: any[]): any[] {
  * Agar model.hisobQuantities bo'sh bo'lib qolsa yoki submittedTickets dan kam bo'lsa,
  * ushbu funksiya model.hisobQuantities ni submittedTickets dagi haqiqiy ishlar bilan to'ldiradi.
  */
+const LEGACY_PHANTOM_MAP: Record<number, number> = {
+  200: 112,
+  201: 68,
+  295: 189,
+  303: 12,
+  392: 71
+};
+
 export function reconcileModelHisobQuantities(
   models: ModelConfig[],
   submittedTickets: SubmittedTicketRecord[]
 ): ModelConfig[] {
   if (!models || models.length === 0) return models || [];
-  if (!submittedTickets || submittedTickets.length === 0) return models;
+  const safeTickets = submittedTickets || [];
 
   // 1. submittedTickets bo'yicha har bir model, ishchi va operatsiya bo'yicha jami sonlarni hisoblaymiz
   const ticketTotalsByModel: Record<string, Record<number, Record<string, number>>> = {};
 
-  for (const t of submittedTickets) {
+  for (const t of safeTickets) {
     if (!t.modelId || !t.entries || t.entries.length === 0) continue;
     const mId = t.modelId;
     if (!ticketTotalsByModel[mId]) {
@@ -280,39 +288,55 @@ export function reconcileModelHisobQuantities(
 
     for (const e of t.entries) {
       if (e.workerId === undefined || e.workerId === null || !e.opName) continue;
-      if (!mHq[e.workerId]) {
-        mHq[e.workerId] = {};
+      const targetWorkerId = e.workerId >= 200
+        ? (LEGACY_PHANTOM_MAP[e.workerId] || 68)
+        : e.workerId;
+
+      if (!mHq[targetWorkerId]) {
+        mHq[targetWorkerId] = {};
       }
-      mHq[e.workerId][e.opName] = (mHq[e.workerId][e.opName] || 0) + qty;
+      mHq[targetWorkerId][e.opName] = (mHq[targetWorkerId][e.opName] || 0) + qty;
     }
   }
 
-  // 2. Har bir modelga tekshirib qo'llaymiz
+  // 2. Har bir modelga tekshirib qo'llaymiz va 200+ ID larni tozalab, asosiy ishchilarga birlashtiramiz
   return models.map((m) => {
     const computedHq = ticketTotalsByModel[m.id];
-    if (!computedHq) return m;
-
     const existingHq = { ...(m.hisobQuantities || {}) };
     let changed = false;
 
-    // Har bir ishchining hisobQuantities ni tekshiramiz
-    for (const [wIdStr, ops] of Object.entries(computedHq)) {
+    // 200 dan katta bo'lgan barcha sun'iy dublikat kalitlarni olib tashlash va birlashtirish
+    for (const [wIdStr, ops] of Object.entries(existingHq)) {
       const wId = Number(wIdStr);
-      if (!existingHq[wId]) {
-        existingHq[wId] = { ...ops };
-        changed = true;
-      } else {
-        const currentWorkerOps = { ...existingHq[wId] };
-        for (const [opName, compQty] of Object.entries(ops)) {
-          const curQty = currentWorkerOps[opName] || 0;
-          // Agar bazadagi hisobQuantities pattalardan farq qilsa (qo'shilgan yoki o'chirilgan bo'lsa),
-          // haqiqiy tasdiqlangan pattalar soniga tenglashtiramiz
-          if (curQty !== compQty) {
-            currentWorkerOps[opName] = compQty;
-            changed = true;
-          }
+      if (wId >= 200) {
+        const targetId = LEGACY_PHANTOM_MAP[wId] || 68;
+        if (!existingHq[targetId]) existingHq[targetId] = {};
+        for (const [opName, qty] of Object.entries(ops as Record<string, number>)) {
+          existingHq[targetId][opName] = Math.max(existingHq[targetId][opName] || 0, qty);
         }
-        existingHq[wId] = currentWorkerOps;
+        delete existingHq[wId];
+        changed = true;
+      }
+    }
+
+    if (computedHq) {
+      // Har bir ishchining hisobQuantities ni tekshiramiz
+      for (const [wIdStr, ops] of Object.entries(computedHq)) {
+        const wId = Number(wIdStr);
+        if (!existingHq[wId]) {
+          existingHq[wId] = { ...ops };
+          changed = true;
+        } else {
+          const currentWorkerOps = { ...existingHq[wId] };
+          for (const [opName, compQty] of Object.entries(ops)) {
+            const curQty = currentWorkerOps[opName] || 0;
+            if (curQty !== compQty) {
+              currentWorkerOps[opName] = compQty;
+              changed = true;
+            }
+          }
+          existingHq[wId] = currentWorkerOps;
+        }
       }
     }
 
