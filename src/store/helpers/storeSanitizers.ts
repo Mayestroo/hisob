@@ -46,13 +46,42 @@ export function createInitialTicketForms(models: ModelConfig[]): Record<string, 
 
 export function sanitizeWorkers(wList: any[]): Worker[] {
   if (!Array.isArray(wList)) return [];
-  return wList.map((w: any) => ({
-    ...w,
-    avans: Math.max(0, Number(w.avans) || 0),
-    jarima: Math.max(0, Number(w.jarima) || 0),
-    staj: Math.max(0, Number(w.staj) || 0)
-  }));
+  const seenNames = new Map<string, Worker>();
+  const cleanList: Worker[] = [];
+
+  // Sort so lower IDs come first
+  const sorted = [...wList].filter(w => w && w.id).sort((a, b) => a.id - b.id);
+
+  for (const w of sorted) {
+    const cleanName = (w.name || '').trim().toLowerCase();
+    if (!cleanName) continue;
+
+    const sanitizedWorker: Worker = {
+      ...w,
+      avans: Math.max(0, Number(w.avans) || 0),
+      jarima: Math.max(0, Number(w.jarima) || 0),
+      staj: Math.max(0, Number(w.staj) || 0)
+    };
+
+    if (!seenNames.has(cleanName)) {
+      seenNames.set(cleanName, sanitizedWorker);
+      cleanList.push(sanitizedWorker);
+    } else {
+      // Bir xil ismli sun'iy dublikat kelganda uni ro'yxatga qo'shmaymiz,
+      // lekin agar unda yangi staj/avans/jarima bo'lsa, asosiy ishchiga birlashtiramiz
+      const canonical = seenNames.get(cleanName)!;
+      if (w.staj && !canonical.staj) canonical.staj = sanitizedWorker.staj;
+      if (w.avans && !canonical.avans) canonical.avans = sanitizedWorker.avans;
+      if (w.jarima && !canonical.jarima) canonical.jarima = sanitizedWorker.jarima;
+      if (w.updatedAt && (!canonical.updatedAt || w.updatedAt > canonical.updatedAt)) {
+        canonical.updatedAt = w.updatedAt;
+      }
+    }
+  }
+
+  return cleanList.sort((a, b) => a.id - b.id);
 }
+
 
 export function sanitizeModels(mList: any[]): ModelConfig[] {
   if (!Array.isArray(mList)) return [];
