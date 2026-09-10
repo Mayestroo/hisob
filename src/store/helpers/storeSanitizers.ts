@@ -46,37 +46,45 @@ export function createInitialTicketForms(models: ModelConfig[]): Record<string, 
 
 export function sanitizeWorkers(wList: any[]): Worker[] {
   if (!Array.isArray(wList)) return [];
-  const seenNames = new Map<string, Worker>();
+  const seenIds = new Set<number>();
   const cleanList: Worker[] = [];
 
   // Sort so lower IDs come first
   const sorted = [...wList].filter(w => w && w.id).sort((a, b) => a.id - b.id);
 
+  // Original base workers have IDs 1..199.
+  // Track names of workers 1..199 to detect runaway phantom duplicates with IDs > 199
+  const baseNames = new Set<string>();
   for (const w of sorted) {
-    const cleanName = (w.name || '').trim().toLowerCase();
-    if (!cleanName) continue;
+    if (w.id <= 199 && w.name) {
+      const clean = w.name.trim().toLowerCase().replace(/xon$|хон$|opa$|опа$|aka$|ака$/g, '').trim();
+      if (clean) baseNames.add(clean);
+    }
+  }
 
-    const sanitizedWorker: Worker = {
+  for (const w of sorted) {
+    if (!w || !w.id || seenIds.has(w.id)) continue;
+
+    const rawName = (w.name || '').trim();
+    if (!rawName) continue;
+
+    const normalizedName = rawName.toLowerCase().replace(/xon$|хон$|opa$|опа$|aka$|ака$/g, '').trim();
+
+    // If ID > 199, check if it's a phantom duplicate of an existing 1..199 worker
+    // Or if it's the known phantom ID 200/201 from the runaway bug
+    if (w.id > 199) {
+      if (baseNames.has(normalizedName) || normalizedName.includes('муножат') || normalizedName.includes('мухаббат')) {
+        continue; // Skip ghost duplicate
+      }
+    }
+
+    seenIds.add(w.id);
+    cleanList.push({
       ...w,
       avans: Math.max(0, Number(w.avans) || 0),
       jarima: Math.max(0, Number(w.jarima) || 0),
       staj: Math.max(0, Number(w.staj) || 0)
-    };
-
-    if (!seenNames.has(cleanName)) {
-      seenNames.set(cleanName, sanitizedWorker);
-      cleanList.push(sanitizedWorker);
-    } else {
-      // Bir xil ismli sun'iy dublikat kelganda uni ro'yxatga qo'shmaymiz,
-      // lekin agar unda yangi staj/avans/jarima bo'lsa, asosiy ishchiga birlashtiramiz
-      const canonical = seenNames.get(cleanName)!;
-      if (w.staj && !canonical.staj) canonical.staj = sanitizedWorker.staj;
-      if (w.avans && !canonical.avans) canonical.avans = sanitizedWorker.avans;
-      if (w.jarima && !canonical.jarima) canonical.jarima = sanitizedWorker.jarima;
-      if (w.updatedAt && (!canonical.updatedAt || w.updatedAt > canonical.updatedAt)) {
-        canonical.updatedAt = w.updatedAt;
-      }
-    }
+    });
   }
 
   return cleanList.sort((a, b) => a.id - b.id);
