@@ -202,7 +202,7 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
                   console.log(`[Store] Startup: Cloud has newer data (${new Date(cloudData.updatedAt).toLocaleTimeString()}), applying merge...`);
                   const merged = mergeCloudSyncData(get(), cloudData);
                   set({
-                    workers: merged.workers,
+                    workers: sanitizeWorkers(merged.workers),
                     models: merged.models,
                     nextPartyNumber: merged.nextPartyNumber,
                     printedPartyHistory: merged.printedPartyHistory,
@@ -300,7 +300,7 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
     }
 
     const payload = {
-      workers: overrideState?.workers || state.workers,
+      workers: sanitizeWorkers(overrideState?.workers || state.workers),
       models: rawModels,
       availableSizes: overrideState?.availableSizes || state.availableSizes || [...DEFAULT_BATCH_SIZES],
       ticketForms: overrideState?.ticketForms || state.ticketForms,
@@ -339,7 +339,7 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
           if (overrideState.models !== undefined) syncPayload.models = rawModels;
           if (overrideState.printedPartyHistory !== undefined) syncPayload.printedPartyHistory = overrideState.printedPartyHistory;
           if (overrideState.nextPartyNumber !== undefined) syncPayload.nextPartyNumber = overrideState.nextPartyNumber;
-          if (overrideState.workers !== undefined) syncPayload.workers = overrideState.workers;
+          if (overrideState.workers !== undefined) syncPayload.workers = sanitizeWorkers(overrideState.workers);
           if (overrideState.currentPeriod !== undefined) syncPayload.currentPeriod = overrideState.currentPeriod;
           if (overrideState.periods !== undefined) syncPayload.periods = overrideState.periods;
           if (overrideState.availableSizes !== undefined) syncPayload.availableSizes = overrideState.availableSizes;
@@ -351,7 +351,7 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
           // To'liq saqlash (masalan: dastur ochilganda yoki qo'lda Ctrl+S bosilganda)
           writeMode = 'set';
           syncPayload = {
-            workers: payload.workers,
+            workers: sanitizeWorkers(payload.workers),
             models: payload.models,
             nextPartyNumber: payload.nextPartyNumber,
             printedPartyHistory: payload.printedPartyHistory,

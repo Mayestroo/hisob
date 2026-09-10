@@ -19,6 +19,7 @@ import { initAutoSyncQueue, subscribeToCompany, flushOfflineQueue } from '../ser
 import { ensureAnonymousAuth } from '../services/firebaseAuth';
 import { initDeviceRemoteListener } from '../services/deviceRemoteService';
 import { mergeCloudSyncData } from './helpers/syncMerger';
+import { sanitizeWorkers } from './helpers/storeSanitizers';
 
 // License/role sync helper
 export const syncLicenseAuth = (lic: any) => {
@@ -148,13 +149,15 @@ export function useStoreBridge() {
             const currentState = useWorkbookStore.getState();
             const merged = mergeCloudSyncData(currentState, syncData);
 
+            const cleanMergedWorkers = sanitizeWorkers(merged.workers);
+
             // Store holatini to'liq yangilash
             useWorkbookStore.setState({
               submittedTickets: merged.submittedTickets,
               printedPartyHistory: merged.printedPartyHistory,
               nextPartyNumber: merged.nextPartyNumber,
               models: merged.models,
-              workers: merged.workers,
+              workers: cleanMergedWorkers,
               currentPeriod: merged.currentPeriod,
               periods: merged.periods,
               availableSizes: merged.availableSizes,
@@ -173,7 +176,7 @@ export function useStoreBridge() {
                 printedPartyHistory: merged.printedPartyHistory,
                 nextPartyNumber: merged.nextPartyNumber,
                 models: merged.models,
-                workers: merged.workers,
+                workers: cleanMergedWorkers,
                 currentPeriod: merged.currentPeriod,
                 periods: merged.periods,
                 availableSizes: merged.availableSizes,

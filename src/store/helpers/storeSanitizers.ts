@@ -44,50 +44,146 @@ export function createInitialTicketForms(models: ModelConfig[]): Record<string, 
   return forms;
 }
 
+export function cleanWorkerName(raw: string): string {
+  if (!raw) return '';
+  return raw
+    .replace(/[\ufffd\uFFFD?]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function normalizeWorkerName(raw: string): string {
+  if (!raw) return '';
+  return cleanWorkerName(raw)
+    .toLowerCase()
+    .replace(/xon$|хон$|opa$|опа$|aka$|ака$|bonu$|бону$|oy$|ой$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export const CANONICAL_WORKER_ALIASES: Record<string, number> = {
+  // 189: Тожикулова Гулнозахон was renamed to Ахмедова Фотима
+  'тожикулова гулноза': 189,
+  'тожикулова гулнозахон': 189,
+  'тожикулова': 189,
+  'ахмедова фотима': 189,
+  // 186: Акбарова Манзура
+  'акбарова манзура': 186,
+  // 198: МУМИНА ОПА
+  'мумина опа': 198,
+  'мумина': 198,
+  // 68: Умаркулова Мухаббат
+  'умаркулова мухаббат': 68,
+  'ураимова мухаббат': 68,
+  'умаркулова': 68,
+  // 12: АХМАДЖОНОВА МУХАЙЁ
+  'ахмаджонова мухайё': 12,
+  'ахмаджонов мухайё': 12,
+  'ахмаджонова': 12,
+  // 112: УРАИМОВА МУНОЖАТХОН
+  'ураимова муножатхон': 112,
+  'ураимова муножат': 112,
+  // 71: ОДИЛОВА МАХЛИЁ
+  'одилова махлиё': 71,
+  // 53: МАМАЖОНОВА
+  'мамажанова гулбохор': 53
+};
+
+export const LEGACY_WORKER_ID_MAP: Record<number, number> = {
+  200: 112,
+  201: 68,
+  202: 189,
+  295: 189,
+  303: 12,
+  392: 71,
+  401: 68,
+  402: 189,
+  403: 198,
+  404: 112,
+  405: 189,
+  406: 198,
+  407: 68,
+  408: 112,
+  409: 68,
+  447: 12
+};
+
 export function sanitizeWorkers(wList: any[]): Worker[] {
   if (!Array.isArray(wList)) return [];
-  const seenIds = new Set<number>();
-  const cleanList: Worker[] = [];
 
-  // Sort so lower IDs come first
-  const sorted = [...wList].filter(w => w && w.id).sort((a, b) => a.id - b.id);
+  const workerMap = new Map<number, Worker>();
+  const sorted = [...wList].filter((w) => w && w.id).sort((a, b) => a.id - b.id);
 
-  // Original base workers have IDs 1..199.
-  // Track names of workers 1..199 to detect runaway phantom duplicates with IDs > 199
-  const baseNames = new Set<string>();
+  // 1. First pass: Register base workers (id <= 199)
   for (const w of sorted) {
-    if (w.id <= 199 && w.name) {
-      const clean = w.name.trim().toLowerCase().replace(/xon$|хон$|opa$|опа$|aka$|ака$/g, '').trim();
-      if (clean) baseNames.add(clean);
+    if (w.id <= 199) {
+      const cleanName = cleanWorkerName(w.name || '');
+      workerMap.set(w.id, {
+        ...w,
+        id: w.id,
+        name: cleanName || w.name,
+        avans: Math.max(0, Number(w.avans) || 0),
+        jarima: Math.max(0, Number(w.jarima) || 0),
+        staj: Math.max(0, Number(w.staj) || 0)
+      });
     }
   }
 
+  // 2. Build index of normalized names of base workers
+  const baseNameMap = new Map<string, number>();
+  for (const w of workerMap.values()) {
+    const norm = normalizeWorkerName(w.name);
+    if (norm) baseNameMap.set(norm, w.id);
+  }
+
+  // 3. Second pass: Check workers with id > 199
   for (const w of sorted) {
-    if (!w || !w.id || seenIds.has(w.id)) continue;
+    if (w.id <= 199) continue;
 
-    const rawName = (w.name || '').trim();
-    if (!rawName) continue;
+    const rawName = cleanWorkerName(w.name || '');
+    const norm = normalizeWorkerName(rawName);
 
-    const normalizedName = rawName.toLowerCase().replace(/xon$|хон$|opa$|опа$|aka$|ака$/g, '').trim();
+    // 1. Check if mapped by alias
+    let targetCanonicalId: number | undefined = CANONICAL_WORKER_ALIASES[norm];
 
-    // If ID > 199, check if it's a phantom duplicate of an existing 1..199 worker
-    // Or if it's the known phantom ID 200/201 from the runaway bug
-    if (w.id > 199) {
-      if (baseNames.has(normalizedName) || normalizedName.includes('муножат') || normalizedName.includes('мухаббат')) {
-        continue; // Skip ghost duplicate
-      }
+    // 2. Check if matches any base worker by normalized name
+    if (!targetCanonicalId && baseNameMap.has(norm)) {
+      targetCanonicalId = baseNameMap.get(norm);
     }
 
-    seenIds.add(w.id);
-    cleanList.push({
+    // 3. Check if mapped by legacy ID
+    if (!targetCanonicalId && LEGACY_WORKER_ID_MAP[w.id] && workerMap.has(LEGACY_WORKER_ID_MAP[w.id])) {
+      targetCanonicalId = LEGACY_WORKER_ID_MAP[w.id];
+    }
+
+    if (targetCanonicalId && workerMap.has(targetCanonicalId)) {
+      // Merge staj/avans/jarima into canonical worker
+      const canonical = workerMap.get(targetCanonicalId)!;
+      if (w.staj && (!canonical.staj || w.staj > canonical.staj)) canonical.staj = w.staj;
+      if (w.avans && (!canonical.avans || w.avans > canonical.avans)) canonical.avans = w.avans;
+      if (w.jarima && (!canonical.jarima || w.jarima > canonical.jarima)) canonical.jarima = w.jarima;
+      continue; // Merged! Do NOT keep duplicate
+    }
+
+    // If ID is an absurd jump (e.g. w.id > 250 or gap > 1 from current sequential max),
+    // it is a phantom duplicate from runaway sync, discard it!
+    const currentMaxId = Array.from(workerMap.keys()).reduce((max, id) => Math.max(max, id), 0);
+    if (w.id > 199 && (w.id > currentMaxId + 1 || w.id >= 250)) {
+      continue; // Discard phantom runaway ID
+    }
+
+    // Truly new sequentially added worker (e.g. #200, #201)
+    workerMap.set(w.id, {
       ...w,
+      id: w.id,
+      name: rawName,
       avans: Math.max(0, Number(w.avans) || 0),
       jarima: Math.max(0, Number(w.jarima) || 0),
       staj: Math.max(0, Number(w.staj) || 0)
     });
   }
 
-  return cleanList.sort((a, b) => a.id - b.id);
+  return Array.from(workerMap.values()).sort((a, b) => a.id - b.id);
 }
 
 

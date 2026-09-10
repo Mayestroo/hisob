@@ -32,4 +32,25 @@ describe('sanitizeWorkers', () => {
     expect(result).toHaveLength(3);
     expect(result.map((w) => w.id)).toEqual([112, 198, 199]);
   });
+
+  it('correctly eliminates phantom runaway IDs 402, 403, 409, 447 and merges staj', () => {
+    const workers: Partial<Worker>[] = [
+      { id: 12, name: 'АХМАДЖОНОВА МУХАЙЁ', staj: 0 },
+      { id: 68, name: 'Умаркулова Мухаббат', staj: 0 },
+      { id: 189, name: 'Ахмедова Фотима', staj: 0 },
+      { id: 198, name: 'МУМИНА ОПА', staj: 0 },
+      { id: 199, name: 'Абдумуталова Шахноза', staj: 0 },
+      { id: 402, name: 'Тожикулова Гулнозахон', staj: 0 },
+      { id: 403, name: 'МУМИНА ОПА', staj: 0 },
+      { id: 409, name: 'Ураимова Мухаббат', staj: 0 },
+      { id: 447, name: 'АХМАДЖОНОВ\uFFFD\uFFFD МУХАЙЁ', staj: 140000 }
+    ];
+
+    const result = sanitizeWorkers(workers as Worker[]);
+    expect(result).toHaveLength(5);
+    expect(result.map((w) => w.id)).toEqual([12, 68, 189, 198, 199]);
+    // Staj from 447 must be merged into canonical worker 12
+    const w12 = result.find((w) => w.id === 12);
+    expect(w12?.staj).toBe(140000);
+  });
 });

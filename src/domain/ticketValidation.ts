@@ -1,4 +1,5 @@
 import { ModelConfig, Worker, TicketFormState, PrintedPartyRecord, SubmittedTicketRecord } from '../types/workbook';
+import { LEGACY_WORKER_ID_MAP } from '../store/helpers/storeSanitizers';
 
 export interface TicketValidationResult {
   isValid: boolean;
@@ -184,15 +185,8 @@ export function validateTicketForSubmission(
           message: `Ishchi kodi noto'g'ri: "${wVal}"`
         };
       }
-      const LEGACY_REMAP: Record<number, number> = {
-        200: 112,
-        201: 68,
-        295: 189,
-        303: 12,
-        392: 71
-      };
-      if (wId >= 200 && LEGACY_REMAP[wId]) {
-        wId = LEGACY_REMAP[wId];
+      if (wId >= 200 && LEGACY_WORKER_ID_MAP[wId]) {
+        wId = LEGACY_WORKER_ID_MAP[wId];
       }
       const workerExists = workers.some((w) => w.id === wId);
       if (!workerExists) {
