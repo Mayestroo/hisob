@@ -78,8 +78,11 @@ export const App: React.FC = () => {
       // F5 to trigger Jonatish if on patta sheet
       if (e.key === 'F5') {
         e.preventDefault();
-        if (!activeSheet.endsWith('-hisob') && activeSheet !== 'Umumiy') {
-          jonatish(activeSheet);
+        if (!activeSheet.endsWith('-hisob') && activeSheet !== 'Umumiy' && activeSheet !== 'Patta' && activeSheet !== 'Patta-hisob' && activeSheet !== 'Konveyer') {
+          const targetModel = models.find((m) => m.id === activeSheet || m.name === activeSheet);
+          if (targetModel) {
+            jonatish(targetModel.id);
+          }
         }
       }
 
@@ -88,33 +91,24 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'PageDown') {
         e.preventDefault();
         const currentIdx = currentSheets.indexOf(activeSheet as any);
-        if (currentIdx >= 0 && currentIdx < currentSheets.length - 1) {
+        if (currentIdx !== -1 && currentIdx < currentSheets.length - 1) {
           setActiveSheet(currentSheets[currentIdx + 1]);
         }
       }
 
-      // Ctrl + PageUp -> Previous sheet
+      // Ctrl + PageUp -> Prev sheet
       if ((e.ctrlKey || e.metaKey) && e.key === 'PageUp') {
         e.preventDefault();
         const currentIdx = currentSheets.indexOf(activeSheet as any);
-        if (currentIdx > 0) {
+        if (currentIdx !== -1 && currentIdx > 0) {
           setActiveSheet(currentSheets[currentIdx - 1]);
-        }
-      }
-
-      // Escape -> Close active modal
-      if (e.key === 'Escape') {
-        const state = useWorkbookStore.getState();
-        if (state.modalState.type) {
-          e.preventDefault();
-          state.closeModal();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeSheet, jonatish, setActiveSheet, addNotification]);
+  }, [activeSheet, jonatish, setActiveSheet, addNotification, models]);
 
   // Determine current view with RBAC Permission Guarding
   const renderActiveSheetView = () => {
@@ -125,7 +119,7 @@ export const App: React.FC = () => {
           fallback={
             <AccessDenied
               requiredPermission="view:umumiy"
-              message="Umumiy oylik hisobotni ko'rish faqat Admin va Ma'lumot kirituvchi (Type) roli uchun ruxsat etilgan."
+              message="Umumiy hisobot varag'ini ko'rish faqat Admin va Buxgalter uchun ruxsat etilgan."
             />
           }
         >
@@ -141,7 +135,7 @@ export const App: React.FC = () => {
           fallback={
             <AccessDenied
               requiredPermission="view:patta"
-              message="Pattalar ro'yxatini ko'rish uchun sizning rolingizda ruxsat yo'q."
+              message="Patta kesish va chop etish faqat Admin va Chop etuvchi (Print) roli uchun ruxsat etilgan."
             />
           }
         >
@@ -153,11 +147,11 @@ export const App: React.FC = () => {
     if (activeSheet === 'Patta-hisob') {
       return (
         <PermissionGuard
-          permission="view:patta-hisob"
+          permission="view:patta"
           fallback={
             <AccessDenied
-              requiredPermission="view:patta-hisob"
-              message="Patta hisobotini ko'rish uchun sizning rolingizda ruxsat yo'q."
+              requiredPermission="view:patta"
+              message="Topshirilgan pattalar hisobini ko'rish faqat ruxsatnomasi bor xodimlar uchun ochiq."
             />
           }
         >
@@ -183,8 +177,11 @@ export const App: React.FC = () => {
     }
 
     if (activeSheet.endsWith('-hisob')) {
-      const modelId = activeSheet.replace('-hisob', '');
-      const model = models.find((m) => m.id === modelId) || models[0];
+      const hisobTarget = activeSheet;
+      const modelIdOrName = activeSheet.replace(/-hisob$/i, '');
+      const model = models.find(
+        (m) => m.hisobSheetName === hisobTarget || m.id === modelIdOrName || m.name === modelIdOrName
+      ) || models[0];
       if (!model) {
         return (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-500">
@@ -208,7 +205,7 @@ export const App: React.FC = () => {
       );
     }
 
-    const model = models.find((m) => m.id === activeSheet) || models[0];
+    const model = models.find((m) => m.id === activeSheet || m.name === activeSheet) || models[0];
     if (!model) {
       return (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-500">

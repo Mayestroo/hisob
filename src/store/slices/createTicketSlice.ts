@@ -78,13 +78,13 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
 
   jonatish: async (modelId: string): Promise<boolean> => {
     const state = get();
-    const model = state.models.find((m) => m.id === modelId);
+    const model = state.models.find((m) => m.id === modelId || m.name === modelId);
     if (!model) {
       state.addNotification('error', 'Xatolik', `Model topilmadi: ${modelId}`);
       return false;
     }
 
-    const form = state.ticketForms[modelId];
+    const form = state.ticketForms[model.id] || state.ticketForms[model.name];
     if (!form) {
       state.addNotification('error', 'Xatolik', 'Patta formasi topilmadi');
       return false;

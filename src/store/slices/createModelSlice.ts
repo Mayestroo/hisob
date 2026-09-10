@@ -128,25 +128,79 @@ export const createModelSlice: StateCreator<WorkbookStore, [], [], ModelSlice> =
       return;
     }
 
+    const targetModel = state.models.find((m) => m.id === modelId || m.name === modelId);
+    if (!targetModel) return;
+    const oldId = targetModel.id;
+
     const updatedModels = state.models.map((m) => {
-      if (m.id !== modelId) return m;
+      if (m.id !== oldId) return m;
       return {
         ...m,
+        id: cleanName,
         name: cleanName,
         hisobSheetName: `${cleanName}-hisob`,
         title: `Модел- ${cleanName}`
       };
     });
 
-    let currentActive = state.activeSheet;
-    const targetModel = state.models.find((m) => m.id === modelId);
-    if (targetModel) {
-      if (currentActive === targetModel.name) currentActive = cleanName;
-      if (currentActive === targetModel.hisobSheetName) currentActive = `${cleanName}-hisob`;
+    // Migrate ticket forms
+    const updatedTicketForms = { ...state.ticketForms };
+    if (updatedTicketForms[oldId]) {
+      updatedTicketForms[cleanName] = updatedTicketForms[oldId];
+      if (oldId !== cleanName) delete updatedTicketForms[oldId];
     }
 
-    set({ models: updatedModels, activeSheet: currentActive });
-    get().saveToDisk({ models: updatedModels });
+    // Migrate patta batch configs
+    const updatedPattaBatches = { ...state.pattaBatchConfigs };
+    if (updatedPattaBatches[oldId]) {
+      updatedPattaBatches[cleanName] = updatedPattaBatches[oldId];
+      if (oldId !== cleanName) delete updatedPattaBatches[oldId];
+    }
+
+    // Migrate submitted tickets
+    const updatedTickets = (state.submittedTickets || []).map((t) => {
+      if (t.modelId === oldId) {
+        return { ...t, modelId: cleanName };
+      }
+      return t;
+    });
+
+    // Migrate printed party history
+    const updatedHistory = (state.printedPartyHistory || []).map((h) => {
+      if (h.modelId === oldId) {
+        return { ...h, modelId: cleanName, modelName: cleanName };
+      }
+      return h;
+    });
+
+    let currentActive = state.activeSheet;
+    if (currentActive === targetModel.name || currentActive === targetModel.id || currentActive === oldId) {
+      currentActive = cleanName;
+    } else if (
+      currentActive === targetModel.hisobSheetName ||
+      currentActive === `${oldId}-hisob` ||
+      currentActive === `${targetModel.name}-hisob`
+    ) {
+      currentActive = `${cleanName}-hisob`;
+    }
+
+    set({
+      models: updatedModels,
+      ticketForms: updatedTicketForms,
+      pattaBatchConfigs: updatedPattaBatches,
+      submittedTickets: updatedTickets,
+      printedPartyHistory: updatedHistory,
+      activeSheet: currentActive
+    });
+
+    get().saveToDisk({
+      models: updatedModels,
+      ticketForms: updatedTicketForms,
+      pattaBatchConfigs: updatedPattaBatches,
+      submittedTickets: updatedTickets,
+      printedPartyHistory: updatedHistory
+    });
+
     state.addNotification('success', 'Nomlandi', `Model nomi "${cleanName}" ga o'zgartirildi.`);
   },
 

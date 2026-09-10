@@ -190,16 +190,18 @@ export function sanitizeWorkers(wList: any[]): Worker[] {
 export function sanitizeModels(mList: any[]): ModelConfig[] {
   if (!Array.isArray(mList)) return [];
   return mList.map((m: any) => {
-    let fixedTitle = m.title || m.name;
-    if (m.id === 'Buxoro-Kapalak-long') {
-      fixedTitle = 'Модел- Бухоро Капалак лонг';
-    } else if (m.id === 'Buxoro-Kapalak') {
-      fixedTitle = 'Модел- Бухоро Капалак';
-    } else if (m.id === 'Dana-Polo') {
-      fixedTitle = 'Модел- Дана Polo';
-    } else if (m.id === 'Dana-Polo-long') {
-      fixedTitle = 'Модел- Дана Polo лонг';
+    let cleanName = (m.name || m.id || '').trim();
+    let cleanId = (m.id || cleanName).trim();
+
+    // If model was renamed (e.g. Aleksandr-oversize -> Aleksandr-Приталинний), sync ID with current name
+    if (cleanId === 'Aleksandr-oversize' && cleanName.includes('Приталин')) {
+      cleanId = cleanName;
     }
+
+    // Always keep title in sync with the current clean model name
+    const cleanPrefix = cleanName.replace(/^(Модел-\s*|Модель-\s*|Model-\s*)+/i, '').trim();
+    const fixedTitle = `Модел- ${cleanPrefix}`;
+    const hisobSheet = m.hisobSheetName || `${cleanName}-hisob`;
 
     let cleanParty = m.party || '';
     if (cleanParty.includes('6632') || cleanParty.includes('Мато Партия')) {
@@ -240,6 +242,9 @@ export function sanitizeModels(mList: any[]): ModelConfig[] {
 
     return {
       ...m,
+      id: cleanId,
+      name: cleanName,
+      hisobSheetName: hisobSheet,
       title: fixedTitle,
       party: cleanParty,
       operations: uniqueOps,
