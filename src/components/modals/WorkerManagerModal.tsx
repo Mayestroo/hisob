@@ -10,6 +10,7 @@ export const WorkerManagerModal: React.FC = () => {
   const addWorker = useWorkbookStore((s) => s.addWorker);
   const updateWorker = useWorkbookStore((s) => s.updateWorker);
   const deleteWorker = useWorkbookStore((s) => s.deleteWorker);
+  const confirmAction = useWorkbookStore((s) => s.confirmAction);
   const addNotification = useWorkbookStore((s) => s.addNotification);
   const [newWorkerName, setNewWorkerName] = useState('');
   const [newWorkerStaj, setNewWorkerStaj] = useState('');
@@ -23,14 +24,17 @@ export const WorkerManagerModal: React.FC = () => {
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWorkerName.trim()) return;
+    const clean = newWorkerStaj.replace(/\D/g, '');
+    const stajNum = clean ? parseInt(clean, 10) : 0;
     addWorker(newWorkerName.trim());
-    if (newWorkerStaj.trim()) {
-      const clean = newWorkerStaj.replace(/\D/g, '');
-      const stajNum = clean ? parseInt(clean, 10) : 0;
-      if (!isNaN(stajNum) && stajNum > 0) {
-        const maxId = workers.reduce((max, w) => Math.max(max, w.id), 0) + 1;
-        updateWorker(maxId, { staj: stajNum });
-      }
+    if (stajNum > 0) {
+      setTimeout(() => {
+        const latest = useWorkbookStore.getState().workers;
+        const added = latest.find((w) => w.name.toLowerCase() === newWorkerName.trim().toLowerCase());
+        if (added) {
+          updateWorker(added.id, { staj: stajNum });
+        }
+      }, 50);
     }
     setNewWorkerName('');
     setNewWorkerStaj('');
@@ -39,7 +43,7 @@ export const WorkerManagerModal: React.FC = () => {
   const startEditing = (workerId: number, currentName: string, currentStaj: number = 0) => {
     setEditingWorkerId(workerId);
     setEditingName(currentName);
-    setEditingStaj(currentStaj > 0 ? formatMoney(currentStaj) : '');
+    setEditingStaj(currentStaj > 0 ? String(currentStaj) : '');
   };
 
   const saveEditing = (workerId: number) => {
@@ -57,8 +61,14 @@ export const WorkerManagerModal: React.FC = () => {
     setEditingStaj('');
   };
 
-  const handleDelete = (workerId: number, name: string) => {
-    if (window.confirm(`Haqiqatan ham "${name}" (ID: ${workerId}) ishchisini ro'yxatdan o'chirmoqchimisiz?`)) {
+  const handleDelete = async (workerId: number, name: string) => {
+    const ok = await confirmAction({
+      title: "Ishchini o'chirish",
+      message: `Haqiqatan ham "${name}" (ID: ${workerId}) ishchisini ro'yxatdan o'chirmoqchimisiz?`,
+      confirmText: "Ha, o'chirilsin",
+      isDanger: true
+    });
+    if (ok) {
       deleteWorker(workerId);
     }
   };

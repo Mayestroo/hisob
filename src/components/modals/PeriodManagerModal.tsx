@@ -42,6 +42,7 @@ export const PeriodManagerModal: React.FC = () => {
   const periods = useWorkbookStore((s) => s.periods);
   const updateCurrentPeriod = useWorkbookStore((s) => s.updateCurrentPeriod);
   const closeCurrentPeriod = useWorkbookStore((s) => s.closeCurrentPeriod);
+  const confirmAction = useWorkbookStore((s) => s.confirmAction);
   const loadArchivedPeriod = useWorkbookStore((s) => s.loadArchivedPeriod);
   const setActiveSheet = useWorkbookStore((s) => s.setActiveSheet);
   const models = useWorkbookStore((s) => s.models);
@@ -145,7 +146,14 @@ export const PeriodManagerModal: React.FC = () => {
       `• To'liq topshirilgan partiyalar arxivlanadi, chala qolgan partiyalar yangi oyga o'tadi.\n` +
       `• Yangi boshlanadigan oy: «${finalNextName}» (${formatUzbekDate(nextPeriodStartDate)} dan)`;
 
-    if (!window.confirm(confirmMsg)) {
+    const ok = await confirmAction({
+      title: "Oylik davrni yopish",
+      message: confirmMsg,
+      confirmText: "Ha, yopilsin",
+      isDanger: false
+    });
+
+    if (!ok) {
       return;
     }
 

@@ -24,6 +24,7 @@ const AppUpdateModal = React.lazy(() => import('./components/modals/AppUpdateMod
 
 import { NotificationToast } from './components/NotificationToast';
 import { LoadingOverlay } from './components/LoadingOverlay';
+import { ConfirmModal } from './components/modals/ConfirmModal';
 import { useWorkbookStore } from './store/workbookStore';
 import { PermissionGuard } from './components/PermissionGuard';
 import { AccessDenied } from './components/AccessDenied';
@@ -271,6 +272,7 @@ export const App: React.FC = () => {
       </React.Suspense>
       <NotificationToast />
       <LoadingOverlay />
+      <ConfirmModal />
     </div>
   );
 };

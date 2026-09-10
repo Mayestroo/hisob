@@ -20,6 +20,7 @@ export const BackupManagerModal: React.FC = () => {
   const setLoadingMessage = useWorkbookStore((s) => s.setLoadingMessage);
   const licenseStatus = useWorkbookStore((s) => s.licenseStatus);
   const restoreFromCloud = useWorkbookStore((s) => s.restoreFromCloud);
+  const confirmAction = useWorkbookStore((s) => s.confirmAction);
 
   const [backups, setBackups] = useState<BackupItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,11 +41,14 @@ export const BackupManagerModal: React.FC = () => {
       return;
     }
 
-    if (
-      !window.confirm(
-        `Haqiqatan ham [${activeCompanyName}] korxonasi bulutidan ma'lumotlarni tiklamoqchimisiz?\n\nLokal bazadagi barcha modellar, pattalar va partiyalar o'sha korxonaning bulutidagi so'nggi holati bilan yangilanadi.`
-      )
-    ) {
+    const ok = await confirmAction({
+      title: "Bulutdan tiklash",
+      message: `Haqiqatan ham [${activeCompanyName}] korxonasi bulutidan ma'lumotlarni tiklamoqchimisiz?\n\nLokal bazadagi barcha modellar, pattalar va partiyalar o'sha korxonaning bulutidagi so'nggi holati bilan yangilanadi.`,
+      confirmText: "Tiklash",
+      isDanger: true
+    });
+
+    if (!ok) {
       return;
     }
 
@@ -88,7 +92,13 @@ export const BackupManagerModal: React.FC = () => {
   };
 
   const handleRestore = async (filename: string) => {
-    if (!window.confirm(`Haqiqatan ham ushbu zaxira nusxasini tiklamoqchimisiz?\n\nJoriy o'zgarishlar ushbu zaxiradagi holatga qaytariladi.`)) return;
+    const ok = await confirmAction({
+      title: "Zaxira nusxasini tiklash",
+      message: "Haqiqatan ham ushbu zaxira nusxasini tiklamoqchimisiz?\n\nJoriy o'zgarishlar ushbu zaxiradagi holatga qaytariladi.",
+      confirmText: "Tiklash",
+      isDanger: true
+    });
+    if (!ok) return;
     
     setLoadingMessage("Zaxira nusxasi tiklanmoqda...");
     closeModal();

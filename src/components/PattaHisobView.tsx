@@ -37,6 +37,7 @@ export const PattaHisobView: React.FC = () => {
   const deletePrintedPartyRecord = useWorkbookStore((s) => s.deletePrintedPartyRecord);
   const deleteSubmittedTicket = useWorkbookStore((s) => s.deleteSubmittedTicket);
   const confirmPartyActualQuantities = useWorkbookStore((s) => s.confirmPartyActualQuantities);
+  const confirmAction = useWorkbookStore((s) => s.confirmAction);
   const addNotification = useWorkbookStore((s) => s.addNotification);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -1403,8 +1404,14 @@ export const PattaHisobView: React.FC = () => {
                                   {!isArchiveMode && !isAllTimeMode && (
                                     <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                                       <button
-                                        onClick={() => {
-                                          if (window.confirm(`Partiya ${row.partyNumber} ni o'chirishni xohlaysizmi?`)) {
+                                        onClick={async () => {
+                                          const ok = await confirmAction({
+                                            title: "Partiyani o'chirish",
+                                            message: `Partiya ${row.partyNumber} ni o'chirishni xohlaysizmi?`,
+                                            confirmText: "Ha, o'chirilsin",
+                                            isDanger: true
+                                          });
+                                          if (ok) {
                                             deletePrintedPartyRecord(row.id);
                                           }
                                         }}
@@ -1438,9 +1445,15 @@ export const PattaHisobView: React.FC = () => {
                                                   </span>
                                                   {!isArchiveMode && !isAllTimeMode && partyHealth.hasMismatch && (
                                                     <button
-                                                      onClick={(e) => {
+                                                      onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        if (window.confirm(`Partiya ${row.partyNumber} sonini haqiqiy ${actualSubmittedSum.toLocaleString()} dona deb tasdiqlansinmi?`)) {
+                                                        const ok = await confirmAction({
+                                                          title: "Haqiqiy sonni tasdiqlash",
+                                                          message: `Partiya ${row.partyNumber} sonini haqiqiy ${actualSubmittedSum.toLocaleString()} dona deb tasdiqlansinmi?`,
+                                                          confirmText: "Tasdiqlash",
+                                                          isDanger: false
+                                                        });
+                                                        if (ok) {
                                                           confirmPartyActualQuantities(row.id);
                                                         }
                                                       }}
@@ -1543,9 +1556,15 @@ export const PattaHisobView: React.FC = () => {
                                                             <td style={{ textAlign: 'center' }}>
                                                               {t.isSubmitted && t.id ? (
                                                                 <button
-                                                                  onClick={(e) => {
+                                                                  onClick={async (e) => {
                                                                     e.stopPropagation();
-                                                                    if (window.confirm(`Ushbu Patta ${t.actualPattaNumber || t.pattaNumber} ga kiritilgan hisobotni bekor qilmoqchimisiz?`)) {
+                                                                    const ok = await confirmAction({
+                                                                      title: "Pattani bekor qilish",
+                                                                      message: `Ushbu Patta ${t.actualPattaNumber || t.pattaNumber} ga kiritilgan hisobotni bekor qilmoqchimisiz?`,
+                                                                      confirmText: "Bekor qilish",
+                                                                      isDanger: true
+                                                                    });
+                                                                    if (ok) {
                                                                       deleteSubmittedTicket(t.id!);
                                                                     }
                                                                   }}

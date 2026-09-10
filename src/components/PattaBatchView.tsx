@@ -13,6 +13,7 @@ export const PattaBatchView: React.FC = () => {
   const availableSizes = useWorkbookStore((s) => s.availableSizes);
   const addCustomSize = useWorkbookStore((s) => s.addCustomSize);
   const deleteCustomSize = useWorkbookStore((s) => s.deleteCustomSize);
+  const confirmAction = useWorkbookStore((s) => s.confirmAction);
   const nextPartyNumber = useWorkbookStore((s) => s.nextPartyNumber);
   const updatePattaBatchConfig = useWorkbookStore((s) => s.updatePattaBatchConfig);
   const updatePattaBatchSize = useWorkbookStore((s) => s.updatePattaBatchSize);
@@ -645,9 +646,15 @@ export const PattaBatchView: React.FC = () => {
                           {isCustom && (
                             <button
                               type="button"
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.stopPropagation();
-                                if (window.confirm(`«${sizeName}» razmerini o'chirmoqchimisiz?`)) {
+                                const ok = await confirmAction({
+                                  title: "Razmerni o'chirish",
+                                  message: `«${sizeName}» razmerini o'chirmoqchimisiz?`,
+                                  confirmText: "Ha, o'chirilsin",
+                                  isDanger: true
+                                });
+                                if (ok) {
                                   deleteCustomSize(sizeName);
                                 }
                               }}

@@ -420,11 +420,14 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
 
   resetToOriginal: async () => {
     const state = get();
-    if (
-      !window.confirm(
-        "Haqiqatan ham barcha hisob-kitoblarni dastlabki (toza) holatga qaytarmoqchimisiz?\n\nESLATMA: Barcha mavjud modellar va ishchilar to'liq saqlanadi, faqat kiritilgan sonlar va hisob-kitoblar nollanadi.\nJoriy barcha ma'lumotlaringiz xavfsizlik uchun avtomatik 'Zaxiralar' ro'yxatiga to'liq saqlanadi."
-      )
-    ) {
+    const ok = await state.confirmAction({
+      title: "Dastlabki holatga qaytarish",
+      message: "Haqiqatan ham barcha hisob-kitoblarni dastlabki (toza) holatga qaytarmoqchimisiz?\n\nESLATMA: Barcha mavjud modellar va ishchilar to'liq saqlanadi, faqat kiritilgan sonlar va hisob-kitoblar nollanadi.\nJoriy barcha ma'lumotlaringiz xavfsizlik uchun avtomatik 'Zaxiralar' ro'yxatiga to'liq saqlanadi.",
+      confirmText: "Ha, tozalansin",
+      isDanger: true
+    });
+
+    if (!ok) {
       return;
     }
 

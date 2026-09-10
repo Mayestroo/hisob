@@ -46,6 +46,8 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
   onClose
 }) => {
   const printedPartyHistory = useWorkbookStore((s) => s.printedPartyHistory);
+  const confirmAction = useWorkbookStore((s) => s.confirmAction);
+  const addNotification = useWorkbookStore((s) => s.addNotification);
 
   // Generate flat list of tickets across all items in batch
   const tickets: PrintableTicket[] = React.useMemo(() => {
@@ -120,7 +122,6 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
   }, [tickets]);
 
   const [isPrinting, setIsPrinting] = React.useState(false);
-  const addNotification = useWorkbookStore((s) => s.addNotification);
 
   const generateFullHtml = () => {
     const printArea = document.getElementById('printable-patta-area');
@@ -295,10 +296,14 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
           printFrame.contentWindow?.print();
 
           // In browser, confirm before recording to history
-          setTimeout(() => {
-            const confirmed = window.confirm(
-              `${tickets.length} ta patta printerdan muvaffaqiyatli chiqarildimi?\n(Agar bekor qilgan bo'lsangiz "Bekor qilish / Отмена" ni bosing)`
-            );
+          setTimeout(async () => {
+            const confirmed = await confirmAction({
+              title: "Chop etish holati",
+              message: `${tickets.length} ta patta printerdan muvaffaqiyatli chiqarildimi?\n(Agar bekor qilgan bo'lsangiz "Bekor qilish" ni bosing)`,
+              confirmText: "Ha, chop etildi",
+              cancelText: "Bekor qilish",
+              isDanger: false
+            });
             if (confirmed) {
               if (onPrinted) {
                 onPrinted(printedSummary);

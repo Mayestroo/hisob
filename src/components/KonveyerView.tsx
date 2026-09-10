@@ -24,6 +24,7 @@ export const KonveyerView: React.FC = () => {
   const workers = useWorkbookStore((s) => s.workers);
   const selectedArchiveFilename = useWorkbookStore((s) => s.selectedArchiveFilename);
   const deleteSubmittedTicket = useWorkbookStore((s) => s.deleteSubmittedTicket);
+  const confirmAction = useWorkbookStore((s) => s.confirmAction);
   const isArchiveMode = !!selectedArchiveFilename;
 
   const [activeTab, setActiveTab] = useState<'matrix' | 'details'>('matrix');
@@ -1137,7 +1138,13 @@ export const KonveyerView: React.FC = () => {
                           <button
                             onClick={async (e) => {
                               e.stopPropagation();
-                              if (window.confirm(`Haqiqatan ham ushbu pattani (#${t.pattaNumber}, Partiya ${t.partyNumber}) o'chirmoqchimisiz?\n\nModel va ishchilar hisobidan tozalansin hamda Patta-hisobda kiritilmagan holatga qaytarilsin.`)) {
+                              const ok = await confirmAction({
+                                title: "Pattani o'chirish",
+                                message: `Haqiqatan ham ushbu pattani (#${t.pattaNumber}, Partiya ${t.partyNumber}) o'chirmoqchimisiz?\n\nModel va ishchilar hisobidan tozalansin hamda Patta-hisobda kiritilmagan holatga qaytarilsin.`,
+                                confirmText: "Ha, o'chirilsin",
+                                isDanger: true
+                              });
+                              if (ok) {
                                 await deleteSubmittedTicket(t.id);
                               }
                             }}

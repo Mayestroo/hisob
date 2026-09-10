@@ -146,17 +146,35 @@ export interface LicenseSlice {
   activateWithKey: (key: string) => Promise<{ success: boolean; error?: string }>;
 }
 
+export interface ConfirmModalState {
+  title?: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  isDanger?: boolean;
+  resolve?: (value: boolean) => void;
+}
+
 export interface UiSlice {
   activeSheet: string;
   activeCell: ActiveCellInfo;
   notifications: Notification[];
   modalState: ModalState;
+  confirmState: ConfirmModalState | null;
   loadingMessage: string | null;
   availableUpdate: AppUpdateInfo | null;
   setActiveSheet: (sheetName: string) => void;
   setActiveCell: (info: ActiveCellInfo) => void;
   openModal: (modal: ModalState) => void;
   closeModal: () => void;
+  confirmAction: (options: {
+    title?: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    isDanger?: boolean;
+  }) => Promise<boolean>;
+  closeConfirm: (result: boolean) => void;
   addNotification: (type: Notification['type'], title: string, message: string) => void;
   removeNotification: (id: string) => void;
   setLoadingMessage: (msg: string | null) => void;

@@ -13,6 +13,7 @@ export const createUiSlice: StateCreator<WorkbookStore, [], [], UiSlice> = (set,
   },
   notifications: [],
   modalState: { type: null },
+  confirmState: null,
   loadingMessage: null,
   availableUpdate: null,
 
@@ -43,6 +44,40 @@ export const createUiSlice: StateCreator<WorkbookStore, [], [], UiSlice> = (set,
 
   closeModal: () => {
     set({ modalState: { type: null } });
+  },
+
+  confirmAction: (options) => {
+    return new Promise<boolean>((resolve) => {
+      set({
+        confirmState: {
+          ...options,
+          resolve: (confirmed: boolean) => {
+            set({ confirmState: null });
+            resolve(confirmed);
+            // Critical for Electron on Windows: refocus window so inputs are immediately selectable
+            setTimeout(() => {
+              try {
+                window.focus();
+              } catch {}
+            }, 30);
+          }
+        }
+      });
+    });
+  },
+
+  closeConfirm: (result: boolean) => {
+    const current = get().confirmState;
+    if (current && current.resolve) {
+      current.resolve(result);
+    } else {
+      set({ confirmState: null });
+    }
+    setTimeout(() => {
+      try {
+        window.focus();
+      } catch {}
+    }, 30);
   },
 
   addNotification: (type: Notification['type'], title: string, message: string) => {

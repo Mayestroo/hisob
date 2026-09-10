@@ -32,6 +32,7 @@ export const SheetTabs: React.FC = () => {
   const openModal = useWorkbookStore((s) => s.openModal);
   const deleteModel = useWorkbookStore((s) => s.deleteModel);
   const renameModel = useWorkbookStore((s) => s.renameModel);
+  const confirmAction = useWorkbookStore((s) => s.confirmAction);
   const addModel = useWorkbookStore((s) => s.addModel);
   const addNotification = useWorkbookStore((s) => s.addNotification);
 
@@ -39,10 +40,9 @@ export const SheetTabs: React.FC = () => {
   const [searchFilter, setSearchFilter] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-  // In-app modal states (replaces window.prompt and window.confirm which fail in Electron)
+  // In-app rename modal state
   const [renameTargetModel, setRenameTargetModel] = useState<ModelConfig | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [deleteTargetModel, setDeleteTargetModel] = useState<ModelConfig | null>(null);
 
   // Auto-close drawer whenever a sheet is selected
   const handleSheetClick = useCallback((name: string) => {
@@ -108,7 +108,7 @@ export const SheetTabs: React.FC = () => {
     }
   };
 
-  const handleDeleteSheet = () => {
+  const handleDeleteSheet = async () => {
     if (!contextMenu) return;
     const model = getTargetModel(contextMenu.sheetName);
     if (!model) {
@@ -123,14 +123,18 @@ export const SheetTabs: React.FC = () => {
       return;
     }
 
-    setDeleteTargetModel(model);
     setContextMenu(null);
-  };
+    setIsOpen(false);
 
-  const confirmDeleteModel = () => {
-    if (deleteTargetModel) {
-      deleteModel(deleteTargetModel.id);
-      setDeleteTargetModel(null);
+    const ok = await confirmAction({
+      title: "Modelni o'chirish",
+      message: `Haqiqatan ham "${model.name}" modelini va unga tegishli barcha varaq va operatsiyalarni butunlay o'chirmoqchimisiz?`,
+      confirmText: "Ha, o'chirilsin",
+      isDanger: true
+    });
+
+    if (ok) {
+      deleteModel(model.id);
     }
   };
 
@@ -160,6 +164,8 @@ export const SheetTabs: React.FC = () => {
       renameModel(renameTargetModel.id, clean);
     }
     setRenameTargetModel(null);
+    setIsOpen(false);
+    setContextMenu(null);
   };
 
   const handleDuplicateModel = () => {
@@ -758,84 +764,6 @@ export const SheetTabs: React.FC = () => {
           </div>
         )}
 
-        {/* In-App Delete Confirmation Modal (Electron compatible) */}
-        {deleteTargetModel && (
-          <div
-            onClick={() => setDeleteTargetModel(null)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(2px)',
-              zIndex: 99999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              animation: 'fadeIn 0.15s ease'
-            }}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: '390px',
-                backgroundColor: 'var(--bg-surface)',
-                borderRadius: 'var(--radius-md)',
-                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.35)',
-                border: '1px solid var(--border-subtle)',
-                overflow: 'hidden',
-                animation: 'scaleUp 0.15s cubic-bezier(0.16, 1, 0.3, 1)'
-              }}
-            >
-              <div style={{
-                padding: '14px 18px',
-                borderBottom: '1px solid var(--border-subtle)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                background: '#fee2e2'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Trash2 size={16} color="#ef4444" />
-                  <span style={{ fontWeight: 700, fontSize: '14px', color: '#b91c1c' }}>
-                    Modelni o'chirish
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDeleteTargetModel(null)}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#b91c1c' }}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div style={{ padding: '18px' }}>
-                <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  Haqiqatan ham <strong style={{ color: 'var(--text-primary)' }}>"{deleteTargetModel.name}"</strong> modelini va unga tegishli barcha varaq va operatsiyalarni butunlay o'chirmoqchimisiz?
-                </p>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTargetModel(null)}
-                    className="soft-btn"
-                    style={{ padding: '6px 14px', fontSize: '13px' }}
-                  >
-                    Bekor qilish
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmDeleteModel}
-                    className="soft-btn"
-                    style={{ padding: '6px 16px', fontSize: '13px', fontWeight: 700, background: '#ef4444', color: '#fff' }}
-                  >
-                    Ha, o'chirilsin
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </aside>
     </>
   );

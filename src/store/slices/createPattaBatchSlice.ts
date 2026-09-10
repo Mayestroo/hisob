@@ -333,8 +333,15 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
     });
   },
 
-  clearPrintedPartyHistory: () => {
-    if (window.confirm('Barcha partiyalar chop etish tarixini tozalamoqchimisiz?')) {
+  clearPrintedPartyHistory: async () => {
+    const state = get();
+    const ok = await state.confirmAction({
+      title: "Chop etish tarixini tozalash",
+      message: "Barcha partiyalar chop etish tarixini tozalamoqchimisiz?",
+      confirmText: "Ha, tozalansin",
+      isDanger: true
+    });
+    if (ok) {
       set({ printedPartyHistory: [] });
       get().saveToDisk({ printedPartyHistory: [] });
     }
