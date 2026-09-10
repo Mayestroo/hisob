@@ -159,7 +159,7 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
     expect(result.workers.map((w) => w.id)).toEqual([198, 199]);
 
     // The ticket pointing to workerId 200 must be remapped to 198
-    expect(result.submittedTickets[0].entries[0].workerId).toBe(198);
+    expect(result.submittedTickets[0]?.entries?.[0]?.workerId).toBe(198);
   });
 
   it('updates worker name when updated remotely instead of creating duplicate worker', () => {
