@@ -325,24 +325,51 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
     if (!options?.skipCloudSync) {
       try {
         const machineId = state.licenseStatus?.machineId || 'device_' + (typeof window !== 'undefined' ? window.navigator.userAgent.slice(0, 10) : 'local');
-        const syncPayload = {
-          workers: payload.workers,
-          models: payload.models,
-          nextPartyNumber: payload.nextPartyNumber,
-          printedPartyHistory: payload.printedPartyHistory,
-          submittedTickets: payload.submittedTickets,
-          currentPeriod: payload.currentPeriod,
-          periods: payload.periods || state.periods || [],
-          availableSizes: payload.availableSizes,
-          deletedTicketIds: payload.deletedTicketIds,
-          deletedPartyIds: payload.deletedPartyIds,
-          deletedWorkerIds: payload.deletedWorkerIds,
-          deletedModelIds: payload.deletedModelIds,
-          updatedAt: Date.now(),
-          updatedBy: machineId
-        };
+        let syncPayload: Record<string, any>;
+        let writeMode: 'set' | 'update' = 'set';
+
+        if (overrideState) {
+          // Faqat o'zgargan maydonlarni (delta) jo'natamiz, shunda patta kiritganda ishchilar ro'yxati qayta yozilmaydi
+          writeMode = 'update';
+          syncPayload = {
+            updatedAt: Date.now(),
+            updatedBy: machineId
+          };
+          if (overrideState.submittedTickets !== undefined) syncPayload.submittedTickets = rawTickets;
+          if (overrideState.models !== undefined) syncPayload.models = rawModels;
+          if (overrideState.printedPartyHistory !== undefined) syncPayload.printedPartyHistory = overrideState.printedPartyHistory;
+          if (overrideState.nextPartyNumber !== undefined) syncPayload.nextPartyNumber = overrideState.nextPartyNumber;
+          if (overrideState.workers !== undefined) syncPayload.workers = overrideState.workers;
+          if (overrideState.currentPeriod !== undefined) syncPayload.currentPeriod = overrideState.currentPeriod;
+          if (overrideState.periods !== undefined) syncPayload.periods = overrideState.periods;
+          if (overrideState.availableSizes !== undefined) syncPayload.availableSizes = overrideState.availableSizes;
+          if (overrideState.deletedTicketIds !== undefined) syncPayload.deletedTicketIds = overrideState.deletedTicketIds;
+          if (overrideState.deletedPartyIds !== undefined) syncPayload.deletedPartyIds = overrideState.deletedPartyIds;
+          if (overrideState.deletedWorkerIds !== undefined) syncPayload.deletedWorkerIds = overrideState.deletedWorkerIds;
+          if (overrideState.deletedModelIds !== undefined) syncPayload.deletedModelIds = overrideState.deletedModelIds;
+        } else {
+          // To'liq saqlash (masalan: dastur ochilganda yoki qo'lda Ctrl+S bosilganda)
+          writeMode = 'set';
+          syncPayload = {
+            workers: payload.workers,
+            models: payload.models,
+            nextPartyNumber: payload.nextPartyNumber,
+            printedPartyHistory: payload.printedPartyHistory,
+            submittedTickets: payload.submittedTickets,
+            currentPeriod: payload.currentPeriod,
+            periods: payload.periods || state.periods || [],
+            availableSizes: payload.availableSizes,
+            deletedTicketIds: payload.deletedTicketIds,
+            deletedPartyIds: payload.deletedPartyIds,
+            deletedWorkerIds: payload.deletedWorkerIds,
+            deletedModelIds: payload.deletedModelIds,
+            updatedAt: Date.now(),
+            updatedBy: machineId
+          };
+        }
+
         const companyId = overrideState?.companyId || options?.companyId || state.licenseStatus?.companyId || 'company_main';
-        syncWrite(companyId, 'syncData', syncPayload, 'set');
+        syncWrite(companyId, 'syncData', syncPayload, writeMode);
       } catch (e) {
         console.warn('[Store] Cloud sync write error:', e);
       }
