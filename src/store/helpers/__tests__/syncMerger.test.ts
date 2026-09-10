@@ -125,4 +125,62 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
     expect(result.printedPartyHistory).toHaveLength(2);
     expect(result.nextPartyNumber).toBe(12);
   });
+
+  it('never spawns duplicate IDs when a worker with the same name already exists', () => {
+    const local = {
+      workers: [
+        { id: 198, name: 'МУМИНА ОПА' },
+        { id: 199, name: 'Абдумуталова Шахноза' }
+      ] as Worker[],
+      currentPeriod: defaultPeriod
+    };
+
+    // Remote sent an entry where "МУМИНА ОПА" was assigned a duplicate ID 200
+    const remote: SyncDataPayload = {
+      workers: [
+        { id: 198, name: 'МУМИНА ОПА' },
+        { id: 199, name: 'Абдумуталова Шахноза' },
+        { id: 200, name: 'МУМИНА ОПА' }
+      ] as Worker[],
+      submittedTickets: [
+        {
+          id: 'sub_test_1',
+          modelId: 'm1',
+          pattaNumber: 1,
+          entries: [{ opName: 'Op1', workerId: 200 }]
+        } as unknown as SubmittedTicketRecord
+      ]
+    };
+
+    const result = mergeCloudSyncData(local, remote);
+
+    // Must NOT have 3 workers (must collapse duplicate "МУМИНА ОПА")
+    expect(result.workers).toHaveLength(2);
+    expect(result.workers.map((w) => w.id)).toEqual([198, 199]);
+
+    // The ticket pointing to workerId 200 must be remapped to 198
+    expect(result.submittedTickets[0].entries[0].workerId).toBe(198);
+  });
+
+  it('updates worker name when updated remotely instead of creating duplicate worker', () => {
+    const local = {
+      workers: [
+        { id: 189, name: 'Тожикулова Гулнозахон', updatedAt: 1000 }
+      ] as Worker[],
+      currentPeriod: defaultPeriod
+    };
+
+    const remote: SyncDataPayload = {
+      workers: [
+        { id: 189, name: 'Ахмедова Фотима', updatedAt: 2000 }
+      ] as Worker[]
+    };
+
+    const result = mergeCloudSyncData(local, remote);
+
+    expect(result.workers).toHaveLength(1);
+    expect(result.workers[0].id).toBe(189);
+    expect(result.workers[0].name).toBe('Ахмедова Фотима');
+  });
 });
+

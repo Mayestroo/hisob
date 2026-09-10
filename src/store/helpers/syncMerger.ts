@@ -95,36 +95,72 @@ export function mergeCloudSyncData(
   const deletedWorkerSet = new Set(mergedDeletedWorkerIds);
   const deletedModelSet = new Set(mergedDeletedModelIds);
 
-  // 2. Workers (Merge by ID, preserve non-empty data, respect deletedWorkerSet, resolve ID collisions)
+  // 2. Workers (Merge by ID and Name safely, prevent runaway ID duplication)
   const workerMap = new Map<number, Worker>();
-  const reindexedWorkerIdMap = new Map<number, number>(); // oldRemoteId -> newId
+  const reindexedWorkerIdMap = new Map<number, number>(); // oldRemoteId -> canonicalId
 
   for (const w of local.workers || []) {
     if (w && w.id && !deletedWorkerSet.has(w.id)) {
       workerMap.set(w.id, w);
     }
   }
-  for (const w of remote.workers || []) {
-    if (w && w.id && !deletedWorkerSet.has(w.id)) {
-      const existing = workerMap.get(w.id);
-      if (!existing) {
-        workerMap.set(w.id, w);
-      } else {
-        const cleanExistingName = (existing.name || '').trim().toLowerCase();
-        const cleanRemoteName = (w.name || '').trim().toLowerCase();
 
-        // Agar ismlar bir xil bo'lsa (yoki bir xil shaxs bo'lsa), maydonlarni birlashtiramiz
-        if (cleanExistingName === cleanRemoteName || !cleanRemoteName || !cleanExistingName) {
-          const remoteTime = (w as any).updatedAt || 0;
-          const localTime = (existing as any).updatedAt || 0;
-          if (remoteTime >= localTime) {
-            workerMap.set(w.id, { ...existing, ...w });
-          } else {
-            workerMap.set(w.id, { ...w, ...existing });
-          }
+  const findWorkerByName = (cleanName: string): Worker | undefined => {
+    if (!cleanName) return undefined;
+    for (const item of workerMap.values()) {
+      if ((item.name || '').trim().toLowerCase() === cleanName) {
+        return item;
+      }
+    }
+    return undefined;
+  };
+
+  for (const w of remote.workers || []) {
+    if (!w || !w.id || deletedWorkerSet.has(w.id)) continue;
+
+    const cleanRemoteName = (w.name || '').trim().toLowerCase();
+    const existingById = workerMap.get(w.id);
+    const existingByName = findWorkerByName(cleanRemoteName);
+
+    if (existingByName && existingByName.id !== w.id) {
+      // Agar ushbu ismli ishchi bazada allaqachon boshqa ID bilan mavjud bo'lsa, qayta yangi ID ochmaymiz!
+      reindexedWorkerIdMap.set(w.id, existingByName.id);
+      const remoteTime = (w as any).updatedAt || 0;
+      const existingTime = (existingByName as any).updatedAt || 0;
+      if (remoteTime >= existingTime) {
+        workerMap.set(existingByName.id, { ...existingByName, ...w, id: existingByName.id });
+      } else {
+        workerMap.set(existingByName.id, { ...w, ...existingByName, id: existingByName.id });
+      }
+      continue;
+    }
+
+    if (!existingById) {
+      workerMap.set(w.id, w);
+    } else {
+      const cleanExistingName = (existingById.name || '').trim().toLowerCase();
+
+      if (cleanExistingName === cleanRemoteName || !cleanRemoteName || !cleanExistingName) {
+        const remoteTime = (w as any).updatedAt || 0;
+        const localTime = (existingById as any).updatedAt || 0;
+        if (remoteTime >= localTime) {
+          workerMap.set(w.id, { ...existingById, ...w });
         } else {
-          // ID bir xil, lekin ismlar har xil (masalan: 1-PC da "Ali", 2-PC da "Vali" 21-ID bilan qo'shilgan)
-          // Bir-birini o'chirib yubormaslik uchun ikkinchi ishchiga yangi bo'sh ID beramiz
+          workerMap.set(w.id, { ...w, ...existingById });
+        }
+      } else {
+        // ID bir xil, lekin ismlar har xil
+        const remoteTime = (w as any).updatedAt || 0;
+        const localTime = (existingById as any).updatedAt || 0;
+
+        if (remoteTime > localTime && remoteTime > 0) {
+          // Masofaviy tomonda ishchining F.I.O si tahrirlangan (yangilangan)
+          workerMap.set(w.id, { ...existingById, ...w });
+        } else if (localTime > remoteTime && localTime > 0) {
+          // Lokal tomondagi tahrir yangiroq
+          workerMap.set(w.id, { ...w, ...existingById });
+        } else {
+          // Haqiqatan alohida 2 ta yangi ishchi oflayn qo'shilgan holat
           let nextAvailableId = 1;
           while (workerMap.has(nextAvailableId)) {
             nextAvailableId++;
@@ -136,6 +172,33 @@ export function mergeCloudSyncData(
       }
     }
   }
+
+  // Xavfsizlik filtri: 200 dan katta bo'lgan takroriy (dublikat) sun'iy ID larni tozalash va reindekslash
+  const seenNames = new Map<string, number>();
+  for (const w of Array.from(workerMap.values()).sort((a, b) => a.id - b.id)) {
+    const norm = (w.name || '').trim().toLowerCase();
+    if (!norm) continue;
+
+    if (!seenNames.has(norm)) {
+      seenNames.set(norm, w.id);
+    } else {
+      const canonicalId = seenNames.get(norm)!;
+      if (w.id >= 200 && w.id !== canonicalId) {
+        workerMap.delete(w.id);
+        reindexedWorkerIdMap.set(w.id, canonicalId);
+        const canonical = workerMap.get(canonicalId);
+        if (canonical) {
+          if (w.staj && !canonical.staj) canonical.staj = w.staj;
+          if (w.avans && !canonical.avans) canonical.avans = w.avans;
+          if (w.jarima && !canonical.jarima) canonical.jarima = w.jarima;
+          if (w.updatedAt && (!canonical.updatedAt || w.updatedAt > canonical.updatedAt)) {
+            canonical.updatedAt = w.updatedAt;
+          }
+        }
+      }
+    }
+  }
+
   const mergedWorkers = Array.from(workerMap.values()).sort((a, b) => a.id - b.id);
 
   // 3. Submitted Tickets (Exclude any deleted ticket; deduplicate by ID; map reindexed worker IDs)
