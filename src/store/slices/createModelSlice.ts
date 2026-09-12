@@ -82,16 +82,22 @@ export const createModelSlice: StateCreator<WorkbookStore, [], [], ModelSlice> =
       }
     };
 
+    const updatedDeletedModelIds = (state.deletedModelIds || []).filter(
+      (id) => id.toLowerCase() !== cleanName.toLowerCase()
+    );
+
     set({
       models: updatedModels,
       ticketForms: updatedTicketForms,
       pattaBatchConfigs: updatedPattaBatches,
+      deletedModelIds: updatedDeletedModelIds,
       activeSheet: cleanName
     });
     get().saveToDisk({
       models: updatedModels,
       ticketForms: updatedTicketForms,
-      pattaBatchConfigs: updatedPattaBatches
+      pattaBatchConfigs: updatedPattaBatches,
+      deletedModelIds: updatedDeletedModelIds
     });
     state.addNotification(
       'success',
@@ -184,12 +190,17 @@ export const createModelSlice: StateCreator<WorkbookStore, [], [], ModelSlice> =
       currentActive = `${cleanName}-hisob`;
     }
 
+    const updatedDeletedModelIds = (state.deletedModelIds || []).filter(
+      (id) => id.toLowerCase() !== cleanName.toLowerCase()
+    );
+
     set({
       models: updatedModels,
       ticketForms: updatedTicketForms,
       pattaBatchConfigs: updatedPattaBatches,
       submittedTickets: updatedTickets,
       printedPartyHistory: updatedHistory,
+      deletedModelIds: updatedDeletedModelIds,
       activeSheet: currentActive
     });
 
@@ -198,7 +209,8 @@ export const createModelSlice: StateCreator<WorkbookStore, [], [], ModelSlice> =
       ticketForms: updatedTicketForms,
       pattaBatchConfigs: updatedPattaBatches,
       submittedTickets: updatedTickets,
-      printedPartyHistory: updatedHistory
+      printedPartyHistory: updatedHistory,
+      deletedModelIds: updatedDeletedModelIds
     });
 
     state.addNotification('success', 'Nomlandi', `Model nomi "${cleanName}" ga o'zgartirildi.`);

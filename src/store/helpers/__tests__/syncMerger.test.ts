@@ -182,5 +182,28 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
     expect(result.workers[0].id).toBe(189);
     expect(result.workers[0].name).toBe('Ахмедова Фотима');
   });
+
+  it('protects active models existing on both sides from stale deletedModelIds', () => {
+    const local = {
+      models: [
+        { id: 'Buxoro-slim', name: 'Buxoro-slim', operations: [], pattaOpsOrder: [] }
+      ] as any[],
+      deletedModelIds: [],
+      currentPeriod: defaultPeriod
+    };
+
+    const remote: SyncDataPayload = {
+      models: [
+        { id: 'Buxoro-slim', name: 'Buxoro-slim', operations: [], pattaOpsOrder: [] }
+      ] as any[],
+      deletedModelIds: ['Buxoro-slim'] // Stale remote tombstone
+    };
+
+    const result = mergeCloudSyncData(local, remote);
+
+    // Buxoro-slim must NOT be deleted because it is active on both sides
+    expect(result.models.some((m) => m.id === 'Buxoro-slim')).toBe(true);
+    expect(result.deletedModelIds).not.toContain('Buxoro-slim');
+  });
 });
 

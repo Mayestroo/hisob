@@ -178,7 +178,19 @@ export const SheetTabs: React.FC = () => {
       return;
     }
 
-    const cloneName = `${model.name}_Nusxa`;
+    let cloneName = `${model.name}_Nusxa`;
+    let counter = 2;
+    while (
+      models.some(
+        (m) =>
+          m.name.toLowerCase() === cloneName.toLowerCase() ||
+          m.id.toLowerCase() === cloneName.toLowerCase()
+      )
+    ) {
+      cloneName = `${model.name}_Nusxa_${counter}`;
+      counter++;
+    }
+
     addModel(cloneName, {
       templateType: 'clone',
       cloneFromId: model.id,
