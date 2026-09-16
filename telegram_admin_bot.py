@@ -154,6 +154,31 @@ class HealthHandler(BaseHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
+        if req_path in ('/worker-app', '/worker-app/', '/worker', '/worker/', '/webapp/worker.html'):
+            html_candidates = [
+                os.path.join(os.path.dirname(__file__), 'webapp', 'worker.html'),
+                os.path.join(os.path.dirname(__file__), 'public', 'webapp', 'worker.html'),
+                os.path.join(os.path.dirname(__file__), 'dist', 'webapp', 'worker.html'),
+            ]
+            content = None
+            for p in html_candidates:
+                if os.path.exists(p):
+                    try:
+                        with open(p, 'rb') as f:
+                            content = f.read()
+                        break
+                    except Exception:
+                        pass
+
+            if content:
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.send_header('Content-Length', str(len(content)))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
         if req_path == '/health':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -1297,6 +1322,34 @@ def main():
                             handle_key_generator_menu(chat_id)
                         elif text == '🔒 Bloklash / Ochish' or text == '/blok':
                             handle_block_menu(chat_id)
+                        elif text.startswith('/unbind_worker'):
+                            parts = text.split()
+                            if len(parts) >= 2 and parts[1].isdigit():
+                                wid = parts[1]
+                                comp_id = 'comp_novda'
+                                try:
+                                    w_url = f"{FIREBASE_RTDB_URL.rstrip('/')}/companies/{comp_id}/worker_bindings/{wid}.json"
+                                    req_w = urllib.request.Request(w_url, headers={'User-Agent': 'NovdaAdmin/1.0'})
+                                    with urllib.request.urlopen(req_w, timeout=6) as resp:
+                                        w_data = json.loads(resp.read().decode('utf-8'))
+
+                                    req_del1 = urllib.request.Request(w_url, headers={'Content-Type': 'application/json'}, method='DELETE')
+                                    with urllib.request.urlopen(req_del1, timeout=8):
+                                        pass
+
+                                    if isinstance(w_data, dict) and w_data.get('tg_id'):
+                                        old_tg = w_data['tg_id']
+                                        tg_url = f"{FIREBASE_RTDB_URL.rstrip('/')}/worker_telegram_bindings/{old_tg}.json"
+                                        req_del2 = urllib.request.Request(tg_url, headers={'Content-Type': 'application/json'}, method='DELETE')
+                                        with urllib.request.urlopen(req_del2, timeout=8):
+                                            pass
+                                        send_message(chat_id, f"✅ <b>Ishchi #{wid}</b> Telegram hisobidan muvaffaqiyatli uzildi! (Eski Telegram ID: <code>{old_tg}</code>).\nEndi xodim yangi Telegramdan /start bosib ulanishi mumkin.", get_main_keyboard())
+                                    else:
+                                        send_message(chat_id, f"✅ <b>Ishchi #{wid}</b> bog'lanishi tozalandi.", get_main_keyboard())
+                                except Exception as e:
+                                    send_message(chat_id, f"⚠️ Xatolik yuz berdi: {e}", get_main_keyboard())
+                            else:
+                                send_message(chat_id, "⚠️ Format: <code>/unbind_worker &lt;ishchi_id&gt;</code>\nMasalan: <code>/unbind_worker 27</code>", get_main_keyboard())
                         elif text == '📊 Statistika' or text == '/stats':
                             handle_statistics(chat_id)
                         else:
