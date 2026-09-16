@@ -126,7 +126,7 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
     expect(result.nextPartyNumber).toBe(12);
   });
 
-  it('never spawns duplicate IDs when a worker with the same name already exists', () => {
+  it('preserves worker #200 and their tickets accurately when remote sends worker #200', () => {
     const local = {
       workers: [
         { id: 198, name: 'МУМИНА ОПА' },
@@ -135,16 +135,15 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
       currentPeriod: defaultPeriod
     };
 
-    // Remote sent an entry where "МУМИНА ОПА" was assigned a duplicate ID 200
     const remote: SyncDataPayload = {
       workers: [
         { id: 198, name: 'МУМИНА ОПА' },
         { id: 199, name: 'Абдумуталова Шахноза' },
-        { id: 200, name: 'МУМИНА ОПА' }
+        { id: 200, name: 'Янги ишчи 200' }
       ] as Worker[],
       submittedTickets: [
         {
-          id: 'sub_test_1',
+          id: 'sub_test_200',
           modelId: 'm1',
           pattaNumber: 1,
           entries: [{ opName: 'Op1', workerId: 200 }]
@@ -154,33 +153,55 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
 
     const result = mergeCloudSyncData(local, remote);
 
-    // Must NOT have 3 workers (must collapse duplicate "МУМИНА ОПА")
-    expect(result.workers).toHaveLength(2);
-    expect(result.workers.map((w) => w.id)).toEqual([198, 199]);
+    // Worker 200 must NOT disappear
+    expect(result.workers).toHaveLength(3);
+    expect(result.workers.map((w) => w.id)).toEqual([198, 199, 200]);
+    expect(result.workers.find((w) => w.id === 200)?.name).toBe('Янги ишчи 200');
 
-    // The ticket pointing to workerId 200 must be remapped to 198
-    expect(result.submittedTickets[0]?.entries?.[0]?.workerId).toBe(198);
+    // Ticket pointing to worker 200 must stay 200
+    expect(result.submittedTickets[0]?.entries?.[0]?.workerId).toBe(200);
   });
 
-  it('updates worker name when updated remotely instead of creating duplicate worker', () => {
+  it('updates worker name when updated remotely with newer timestamp (e.g. replacement of worker #210)', () => {
     const local = {
       workers: [
-        { id: 189, name: 'Тожикулова Гулнозахон', updatedAt: 1000 }
+        { id: 210, name: 'Эски ишчи', updatedAt: 1000 }
       ] as Worker[],
       currentPeriod: defaultPeriod
     };
 
     const remote: SyncDataPayload = {
       workers: [
-        { id: 189, name: 'Ахмедова Фотима', updatedAt: 2000 }
+        { id: 210, name: 'Янги алмаштирилган ишчи', updatedAt: 2000 }
       ] as Worker[]
     };
 
     const result = mergeCloudSyncData(local, remote);
 
     expect(result.workers).toHaveLength(1);
-    expect(result.workers[0].id).toBe(189);
-    expect(result.workers[0].name).toBe('Ахмедова Фотима');
+    expect(result.workers[0].id).toBe(210);
+    expect(result.workers[0].name).toBe('Янги алмаштирилган ишчи');
+  });
+
+  it('retains local worker name if local has newer timestamp than remote', () => {
+    const local = {
+      workers: [
+        { id: 210, name: 'Маҳаллий янги ном', updatedAt: 3000 }
+      ] as Worker[],
+      currentPeriod: defaultPeriod
+    };
+
+    const remote: SyncDataPayload = {
+      workers: [
+        { id: 210, name: 'Эски булут номи', updatedAt: 1000 }
+      ] as Worker[]
+    };
+
+    const result = mergeCloudSyncData(local, remote);
+
+    expect(result.workers).toHaveLength(1);
+    expect(result.workers[0].id).toBe(210);
+    expect(result.workers[0].name).toBe('Маҳаллий янги ном');
   });
 
   it('protects active models existing on both sides from stale deletedModelIds', () => {
@@ -206,4 +227,3 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
     expect(result.deletedModelIds).not.toContain('Buxoro-slim');
   });
 });
-

@@ -10,10 +10,7 @@ import {
   sanitizePrintedPartyHistory,
   reconcileModelHisobQuantities,
   sanitizeWorkers,
-  cleanWorkerName,
-  normalizeWorkerName,
-  CANONICAL_WORKER_ALIASES,
-  LEGACY_WORKER_ID_MAP
+  cleanWorkerName
 } from './storeSanitizers';
 
 export interface SyncDataPayload {
@@ -117,13 +114,12 @@ export function mergeCloudSyncData(
   const deletedWorkerSet = new Set(mergedDeletedWorkerIds);
   const deletedModelSet = new Set(safeDeletedModelIds);
 
-  // 2. Workers (Strict canonical merge, prevent phantom duplicate worker IDs)
+  // 2. Workers (Strict ID-based merge)
   const workerMap = new Map<number, Worker>();
-  const reindexedWorkerIdMap = new Map<number, number>(); // oldRemoteId -> canonicalId
 
   // First seed local base workers
   for (const w of local.workers || []) {
-    if (w && w.id && !deletedWorkerSet.has(w.id)) {
+    if (w && typeof w.id === 'number' && !isNaN(w.id) && w.id > 0 && !deletedWorkerSet.has(w.id)) {
       workerMap.set(w.id, {
         ...w,
         name: cleanWorkerName(w.name || '') || w.name
@@ -131,105 +127,61 @@ export function mergeCloudSyncData(
     }
   }
 
-  // Helper to find existing worker by normalized name
-  const findWorkerByNorm = (normName: string): Worker | undefined => {
-    if (!normName) return undefined;
-    for (const item of workerMap.values()) {
-      if (normalizeWorkerName(item.name) === normName) {
-        return item;
-      }
-    }
-    return undefined;
-  };
-
+  // Merge remote workers by ID
   for (const w of remote.workers || []) {
-    if (!w || !w.id || deletedWorkerSet.has(w.id)) continue;
+    if (!w || typeof w.id !== 'number' || isNaN(w.id) || w.id <= 0 || deletedWorkerSet.has(w.id)) continue;
 
-    const rawName = cleanWorkerName(w.name || '');
-    const normRemoteName = normalizeWorkerName(rawName);
-
-    // 1. Check alias map
-    let canonicalId = CANONICAL_WORKER_ALIASES[normRemoteName];
-
-    // 2. Check normalized name in local workers
-    if (!canonicalId) {
-      const existingByName = findWorkerByNorm(normRemoteName);
-      if (existingByName) {
-        canonicalId = existingByName.id;
-      }
-    }
-
-    // 3. Check legacy worker ID map as fallback
-    if (!canonicalId && LEGACY_WORKER_ID_MAP[w.id] && workerMap.has(LEGACY_WORKER_ID_MAP[w.id])) {
-      canonicalId = LEGACY_WORKER_ID_MAP[w.id];
-    }
-
-    // If this remote worker is remapped to a canonical worker
-    if (canonicalId && canonicalId !== w.id) {
-      reindexedWorkerIdMap.set(w.id, canonicalId);
-      const canonical = workerMap.get(canonicalId);
-      if (canonical) {
-        if (w.staj && (!canonical.staj || w.staj > canonical.staj)) canonical.staj = w.staj;
-        if (w.avans && (!canonical.avans || w.avans > canonical.avans)) canonical.avans = w.avans;
-        if (w.jarima && (!canonical.jarima || w.jarima > canonical.jarima)) canonical.jarima = w.jarima;
-        if (w.updatedAt && (!canonical.updatedAt || w.updatedAt > canonical.updatedAt)) {
-          canonical.updatedAt = w.updatedAt;
-        }
-      }
-      continue;
-    }
-
-    // If ID > 199 and not sequential, discard phantom
-    const currentMaxId = Array.from(workerMap.keys()).reduce((max, id) => Math.max(max, id), 0);
-    if (w.id > 199 && (w.id > currentMaxId + 1 || w.id >= 250)) {
-      continue;
-    }
-
+    const rawName = cleanWorkerName(w.name || '') || w.name;
     const existingById = workerMap.get(w.id);
+
     if (!existingById) {
       workerMap.set(w.id, {
         ...w,
-        name: rawName || w.name
+        name: rawName
       });
     } else {
       const remoteTime = (w as any).updatedAt || 0;
       const localTime = (existingById as any).updatedAt || 0;
-      if (remoteTime >= localTime) {
-        workerMap.set(w.id, { ...existingById, ...w, name: rawName || existingById.name });
+
+      if (remoteTime > localTime) {
+        workerMap.set(w.id, {
+          ...existingById,
+          ...w,
+          name: rawName || existingById.name
+        });
+      } else if (localTime > remoteTime) {
+        workerMap.set(w.id, {
+          ...w,
+          ...existingById,
+          name: existingById.name || rawName
+        });
       } else {
-        workerMap.set(w.id, { ...w, ...existingById });
+        // Equal timestamps: prefer local name if non-empty, combine stats
+        workerMap.set(w.id, {
+          ...w,
+          ...existingById,
+          name: existingById.name?.trim() ? existingById.name : rawName,
+          staj: Math.max(existingById.staj || 0, w.staj || 0),
+          avans: Math.max(existingById.avans || 0, w.avans || 0),
+          jarima: Math.max(existingById.jarima || 0, w.jarima || 0)
+        });
       }
     }
   }
 
   const mergedWorkers = sanitizeWorkers(Array.from(workerMap.values()));
 
-  // 3. Submitted Tickets (Exclude any deleted ticket; deduplicate by ID; map reindexed worker IDs)
+  // 3. Submitted Tickets (Exclude any deleted ticket; deduplicate by ID)
   const ticketMap = new Map<string, SubmittedTicketRecord>();
-  const mapTicketEntries = (t: SubmittedTicketRecord): SubmittedTicketRecord => {
-    if (!t.entries || t.entries.length === 0) return t;
-    const mappedEntries = t.entries.map((entry) => {
-      let resolvedId = entry.workerId;
-      if (reindexedWorkerIdMap.has(resolvedId)) {
-        resolvedId = reindexedWorkerIdMap.get(resolvedId)!;
-      } else if (LEGACY_WORKER_ID_MAP[resolvedId]) {
-        resolvedId = LEGACY_WORKER_ID_MAP[resolvedId];
-      }
-      return resolvedId !== entry.workerId ? { ...entry, workerId: resolvedId } : entry;
-    });
-    return { ...t, entries: mappedEntries };
-  };
-
   for (const t of local.submittedTickets || []) {
     if (t && t.id && !deletedTicketSet.has(t.id)) {
-      ticketMap.set(t.id, mapTicketEntries(t));
+      ticketMap.set(t.id, t);
     }
   }
   for (const t of remote.submittedTickets || []) {
     if (t && t.id && !deletedTicketSet.has(t.id)) {
-      const mapped = mapTicketEntries(t);
       const existing = ticketMap.get(t.id);
-      ticketMap.set(t.id, existing ? { ...existing, ...mapped } : mapped);
+      ticketMap.set(t.id, existing ? { ...existing, ...t } : t);
     }
   }
   const mergedSubmittedTickets = Array.from(ticketMap.values());
@@ -323,19 +275,18 @@ export function mergeCloudSyncData(
           }
         }
 
-        // Merge hisobQuantities (taking reindexed worker IDs into account)
+        // Merge hisobQuantities
         const combinedHq: Record<number, Record<string, number>> = {
           ...(existing.hisobQuantities || {})
         };
         for (const [wIdStr, ops] of Object.entries(m.hisobQuantities || {})) {
-          let wId = Number(wIdStr);
-          if (reindexedWorkerIdMap.has(wId)) {
-            wId = reindexedWorkerIdMap.get(wId)!;
+          const wId = Number(wIdStr);
+          if (!isNaN(wId) && wId > 0) {
+            combinedHq[wId] = {
+              ...(combinedHq[wId] || {}),
+              ...ops
+            };
           }
-          combinedHq[wId] = {
-            ...(combinedHq[wId] || {}),
-            ...ops
-          };
         }
 
         modelMap.set(m.id, {

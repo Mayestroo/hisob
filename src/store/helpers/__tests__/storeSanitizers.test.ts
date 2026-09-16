@@ -19,38 +19,46 @@ describe('sanitizeWorkers', () => {
     expect(result.some((w) => w.id === 199)).toBe(true);
   });
 
-  it('filters out phantom duplicates with ID > 199 that match base workers 1..199', () => {
+  it('preserves workers with ID >= 200 (e.g. 200, 201, 210) and does not discard them', () => {
     const workers: Partial<Worker>[] = [
       { id: 112, name: 'УРАИМОВА МУНОЖАТХОН' },
       { id: 198, name: 'МУМИНА ОПА' },
       { id: 199, name: 'Абдумуталова Шахноза' },
-      { id: 200, name: 'Ураимова Муножат' }, // Phantom duplicate of 112
-      { id: 201, name: 'МУМИНА ОПА' }        // Phantom duplicate of 198
+      { id: 200, name: 'Янги ишчи 200' },
+      { id: 201, name: 'Янги ишчи 201' },
+      { id: 210, name: 'Янги ишчи 210' }
     ];
 
     const result = sanitizeWorkers(workers as Worker[]);
-    expect(result).toHaveLength(3);
-    expect(result.map((w) => w.id)).toEqual([112, 198, 199]);
+    expect(result).toHaveLength(6);
+    expect(result.map((w) => w.id)).toEqual([112, 198, 199, 200, 201, 210]);
+    expect(result.find((w) => w.id === 200)?.name).toBe('Янги ишчи 200');
+    expect(result.find((w) => w.id === 210)?.name).toBe('Янги ишчи 210');
   });
 
-  it('correctly eliminates phantom runaway IDs 402, 403, 409, 447 and merges staj', () => {
+  it('preserves edited worker #210 when user updates replacement name', () => {
     const workers: Partial<Worker>[] = [
-      { id: 12, name: 'АХМАДЖОНОВА МУХАЙЁ', staj: 0 },
-      { id: 68, name: 'Умаркулова Мухаббат', staj: 0 },
-      { id: 189, name: 'Ахмедова Фотима', staj: 0 },
-      { id: 198, name: 'МУМИНА ОПА', staj: 0 },
-      { id: 199, name: 'Абдумуталова Шахноза', staj: 0 },
-      { id: 402, name: 'Тожикулова Гулнозахон', staj: 0 },
-      { id: 403, name: 'МУМИНА ОПА', staj: 0 },
-      { id: 409, name: 'Ураимова Мухаббат', staj: 0 },
-      { id: 447, name: 'АХМАДЖОНОВ\uFFFD\uFFFD МУХАЙЁ', staj: 140000 }
+      { id: 210, name: 'Эски ишчи кетди', updatedAt: 1000 },
+      { id: 210, name: 'Янги ишчи келди', updatedAt: 2000 }
     ];
 
     const result = sanitizeWorkers(workers as Worker[]);
-    expect(result).toHaveLength(5);
-    expect(result.map((w) => w.id)).toEqual([12, 68, 189, 198, 199]);
-    // Staj from 447 must be merged into canonical worker 12
-    const w12 = result.find((w) => w.id === 12);
-    expect(w12?.staj).toBe(140000);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(210);
+    expect(result[0].name).toBe('Янги ишчи келди');
+  });
+
+  it('filters out invalid or non-numeric IDs and cleans whitespace', () => {
+    const workers: any[] = [
+      { id: null, name: 'Invalid' },
+      { id: 0, name: 'Zero' },
+      { id: -5, name: 'Negative' },
+      { id: 205, name: '  Алишер   Валиев  ' }
+    ];
+
+    const result = sanitizeWorkers(workers);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(205);
+    expect(result[0].name).toBe('Алишер Валиев');
   });
 });

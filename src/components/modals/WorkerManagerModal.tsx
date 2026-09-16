@@ -21,20 +21,18 @@ export const WorkerManagerModal: React.FC = () => {
 
   if (modalType !== 'worker_manager') return null;
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWorkerName.trim()) return;
     const clean = newWorkerStaj.replace(/\D/g, '');
     const stajNum = clean ? parseInt(clean, 10) : 0;
     addWorker(newWorkerName.trim());
     if (stajNum > 0) {
-      setTimeout(() => {
-        const latest = useWorkbookStore.getState().workers;
-        const added = latest.find((w) => w.name.toLowerCase() === newWorkerName.trim().toLowerCase());
-        if (added) {
-          updateWorker(added.id, { staj: stajNum });
-        }
-      }, 50);
+      const latest = useWorkbookStore.getState().workers;
+      const added = latest.find((w) => w.name.toLowerCase() === newWorkerName.trim().toLowerCase());
+      if (added) {
+        await updateWorker(added.id, { staj: stajNum }, { immediate: true });
+      }
     }
     setNewWorkerName('');
     setNewWorkerStaj('');
@@ -46,14 +44,14 @@ export const WorkerManagerModal: React.FC = () => {
     setEditingStaj(currentStaj > 0 ? String(currentStaj) : '');
   };
 
-  const saveEditing = (workerId: number) => {
+  const saveEditing = async (workerId: number) => {
     if (editingName.trim()) {
       const clean = editingStaj.replace(/\D/g, '');
       const stajNum = clean ? parseInt(clean, 10) : 0;
-      updateWorker(workerId, {
+      await updateWorker(workerId, {
         name: editingName.trim(),
         staj: stajNum
-      });
+      }, { immediate: true });
       addNotification('success', 'Yangilandi', `Ishchi #${workerId} ma'lumotlari (F.I.O va Staj) yangilandi.`);
     }
     setEditingWorkerId(null);

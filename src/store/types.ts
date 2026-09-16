@@ -64,7 +64,7 @@ export interface ModelSlice {
 
 export interface WorkerSlice {
   workers: Worker[];
-  updateWorker: (workerId: number, updates: Partial<Worker>) => void;
+  updateWorker: (workerId: number, updates: Partial<Worker>, options?: { immediate?: boolean }) => Promise<void> | void;
   addWorker: (name: string) => void;
   deleteWorker: (workerId: number) => void;
 }

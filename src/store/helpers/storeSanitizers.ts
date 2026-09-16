@@ -61,122 +61,22 @@ export function normalizeWorkerName(raw: string): string {
     .trim();
 }
 
-export const CANONICAL_WORKER_ALIASES: Record<string, number> = {
-  // 189: Тожикулова Гулнозахон was renamed to Ахмедова Фотима
-  'тожикулова гулноза': 189,
-  'тожикулова гулнозахон': 189,
-  'тожикулова': 189,
-  'ахмедова фотима': 189,
-  // 186: Акбарова Манзура
-  'акбарова манзура': 186,
-  // 198: МУМИНА ОПА
-  'мумина опа': 198,
-  'мумина': 198,
-  // 68: Умаркулова Мухаббат
-  'умаркулова мухаббат': 68,
-  'ураимова мухаббат': 68,
-  'умаркулова': 68,
-  // 12: АХМАДЖОНОВА МУХАЙЁ
-  'ахмаджонова мухайё': 12,
-  'ахмаджонов мухайё': 12,
-  'ахмаджонова': 12,
-  // 112: УРАИМОВА МУНОЖАТХОН
-  'ураимова муножатхон': 112,
-  'ураимова муножат': 112,
-  // 71: ОДИЛОВА МАХЛИЁ
-  'одилова махлиё': 71,
-  // 53: МАМАЖОНОВА
-  'мамажанова гулбохор': 53
-};
+export const CANONICAL_WORKER_ALIASES: Record<string, number> = {};
 
-export const LEGACY_WORKER_ID_MAP: Record<number, number> = {
-  200: 112,
-  201: 68,
-  202: 189,
-  295: 189,
-  303: 12,
-  392: 71,
-  401: 68,
-  402: 189,
-  403: 198,
-  404: 112,
-  405: 189,
-  406: 198,
-  407: 68,
-  408: 112,
-  409: 68,
-  447: 12
-};
+export const LEGACY_WORKER_ID_MAP: Record<number, number> = {};
 
 export function sanitizeWorkers(wList: any[]): Worker[] {
   if (!Array.isArray(wList)) return [];
 
   const workerMap = new Map<number, Worker>();
-  const sorted = [...wList].filter((w) => w && w.id).sort((a, b) => a.id - b.id);
+  const sorted = [...wList].filter((w) => w && typeof w.id === 'number' && w.id > 0).sort((a, b) => a.id - b.id);
 
-  // 1. First pass: Register base workers (id <= 199)
   for (const w of sorted) {
-    if (w.id <= 199) {
-      const cleanName = cleanWorkerName(w.name || '');
-      workerMap.set(w.id, {
-        ...w,
-        id: w.id,
-        name: cleanName || w.name,
-        avans: Math.max(0, Number(w.avans) || 0),
-        jarima: Math.max(0, Number(w.jarima) || 0),
-        staj: Math.max(0, Number(w.staj) || 0)
-      });
-    }
-  }
-
-  // 2. Build index of normalized names of base workers
-  const baseNameMap = new Map<string, number>();
-  for (const w of workerMap.values()) {
-    const norm = normalizeWorkerName(w.name);
-    if (norm) baseNameMap.set(norm, w.id);
-  }
-
-  // 3. Second pass: Check workers with id > 199
-  for (const w of sorted) {
-    if (w.id <= 199) continue;
-
-    const rawName = cleanWorkerName(w.name || '');
-    const norm = normalizeWorkerName(rawName);
-
-    // 1. Check if mapped by alias
-    let targetCanonicalId: number | undefined = CANONICAL_WORKER_ALIASES[norm];
-
-    // 2. Check if matches any base worker by normalized name
-    if (!targetCanonicalId && baseNameMap.has(norm)) {
-      targetCanonicalId = baseNameMap.get(norm);
-    }
-
-    // 3. Check if mapped by legacy ID
-    if (!targetCanonicalId && LEGACY_WORKER_ID_MAP[w.id] && workerMap.has(LEGACY_WORKER_ID_MAP[w.id])) {
-      targetCanonicalId = LEGACY_WORKER_ID_MAP[w.id];
-    }
-
-    if (targetCanonicalId && workerMap.has(targetCanonicalId)) {
-      // Merge staj/avans/jarima into canonical worker
-      const canonical = workerMap.get(targetCanonicalId)!;
-      if (w.staj && (!canonical.staj || w.staj > canonical.staj)) canonical.staj = w.staj;
-      if (w.avans && (!canonical.avans || w.avans > canonical.avans)) canonical.avans = w.avans;
-      if (w.jarima && (!canonical.jarima || w.jarima > canonical.jarima)) canonical.jarima = w.jarima;
-      continue; // Merged! Do NOT keep duplicate
-    }
-
-    // If ID is an absurd jump (e.g. w.id > 250 or gap > 1 from current sequential max),
-    // it is a phantom duplicate from runaway sync, discard it!
-    const currentMaxId = Array.from(workerMap.keys()).reduce((max, id) => Math.max(max, id), 0);
-    if (w.id > 199 && (w.id > currentMaxId + 1 || w.id >= 250)) {
-      continue; // Discard phantom runaway ID
-    }
-
-    // Truly new sequentially added worker (e.g. #200, #201)
+    const cleanName = cleanWorkerName(w.name || '');
     workerMap.set(w.id, {
       ...w,
       id: w.id,
-      name: rawName,
+      name: cleanName || w.name,
       avans: Math.max(0, Number(w.avans) || 0),
       jarima: Math.max(0, Number(w.jarima) || 0),
       staj: Math.max(0, Number(w.staj) || 0)
@@ -359,14 +259,6 @@ export function sanitizePrintedPartyHistory(history: any[]): any[] {
  * Agar model.hisobQuantities bo'sh bo'lib qolsa yoki submittedTickets dan kam bo'lsa,
  * ushbu funksiya model.hisobQuantities ni submittedTickets dagi haqiqiy ishlar bilan to'ldiradi.
  */
-const LEGACY_PHANTOM_MAP: Record<number, number> = {
-  200: 112,
-  201: 68,
-  295: 189,
-  303: 12,
-  392: 71
-};
-
 export function reconcileModelHisobQuantities(
   models: ModelConfig[],
   submittedTickets: SubmittedTicketRecord[]
@@ -389,9 +281,7 @@ export function reconcileModelHisobQuantities(
 
     for (const e of t.entries) {
       if (e.workerId === undefined || e.workerId === null || !e.opName) continue;
-      const targetWorkerId = e.workerId >= 200
-        ? (LEGACY_PHANTOM_MAP[e.workerId] || 68)
-        : e.workerId;
+      const targetWorkerId = e.workerId;
 
       if (!mHq[targetWorkerId]) {
         mHq[targetWorkerId] = {};
@@ -400,25 +290,11 @@ export function reconcileModelHisobQuantities(
     }
   }
 
-  // 2. Har bir modelga tekshirib qo'llaymiz va 200+ ID larni tozalab, asosiy ishchilarga birlashtiramiz
+  // 2. Har bir modelga tekshirib qo'llaymiz
   return models.map((m) => {
     const computedHq = ticketTotalsByModel[m.id];
     const existingHq = { ...(m.hisobQuantities || {}) };
     let changed = false;
-
-    // 200 dan katta bo'lgan barcha sun'iy dublikat kalitlarni olib tashlash va birlashtirish
-    for (const [wIdStr, ops] of Object.entries(existingHq)) {
-      const wId = Number(wIdStr);
-      if (wId >= 200) {
-        const targetId = LEGACY_PHANTOM_MAP[wId] || 68;
-        if (!existingHq[targetId]) existingHq[targetId] = {};
-        for (const [opName, qty] of Object.entries(ops as Record<string, number>)) {
-          existingHq[targetId][opName] = Math.max(existingHq[targetId][opName] || 0, qty);
-        }
-        delete existingHq[wId];
-        changed = true;
-      }
-    }
 
     if (computedHq) {
       // Har bir ishchining hisobQuantities ni tekshiramiz

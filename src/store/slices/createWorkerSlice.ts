@@ -5,14 +5,13 @@ import { triggerDebouncedSave } from '../helpers/debounceSave';
 import {
   cleanWorkerName,
   normalizeWorkerName,
-  CANONICAL_WORKER_ALIASES,
   sanitizeWorkers
 } from '../helpers/storeSanitizers';
 
 export const createWorkerSlice: StateCreator<WorkbookStore, [], [], WorkerSlice> = (set, get) => ({
   workers: [],
 
-  updateWorker: (workerId: number, updates: Partial<Worker>) => {
+  updateWorker: async (workerId: number, updates: Partial<Worker>, options?: { immediate?: boolean }) => {
     const state = get();
     const sanitized = { ...updates };
     if (sanitized.avans !== undefined) sanitized.avans = Math.max(0, Number(sanitized.avans) || 0);
@@ -20,17 +19,23 @@ export const createWorkerSlice: StateCreator<WorkbookStore, [], [], WorkerSlice>
     if (sanitized.staj !== undefined) sanitized.staj = Math.max(0, Number(sanitized.staj) || 0);
     if (sanitized.name) sanitized.name = cleanWorkerName(sanitized.name);
 
+    const now = Date.now();
     const updatedWorkers = state.workers.map((w) => {
       if (w.id === workerId) {
-        return { ...w, ...sanitized, updatedAt: Date.now() };
+        return { ...w, ...sanitized, updatedAt: now };
       }
       return w;
     });
 
     set({ workers: updatedWorkers });
-    triggerDebouncedSave(() => {
-      get().saveToDisk({ workers: updatedWorkers });
-    });
+
+    if (options?.immediate || sanitized.name !== undefined) {
+      await get().saveToDisk({ workers: updatedWorkers });
+    } else {
+      triggerDebouncedSave(() => {
+        get().saveToDisk({ workers: updatedWorkers });
+      });
+    }
   },
 
   addWorker: (name: string) => {
@@ -43,15 +48,6 @@ export const createWorkerSlice: StateCreator<WorkbookStore, [], [], WorkerSlice>
     if (existing) {
       state.addNotification('warning', "Ishchi allaqachon mavjud", `"${cleanName}" allaqachon #${existing.id} sifatida ro'yxatda bor.`);
       return;
-    }
-
-    const aliasCanonicalId = CANONICAL_WORKER_ALIASES[norm];
-    if (aliasCanonicalId) {
-      const canonical = state.workers.find((w) => w.id === aliasCanonicalId);
-      if (canonical) {
-        state.addNotification('warning', "Ishchi allaqachon mavjud", `"${cleanName}" ishchisi #${canonical.id} (${canonical.name}) ga tegishli.`);
-        return;
-      }
     }
 
     const maxId = state.workers.reduce((max, w) => Math.max(max, w.id), 0);
