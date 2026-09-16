@@ -111,10 +111,70 @@ def update_firebase_device(mach_id, payload):
 # Session state for user inputs (e.g. awaiting device ID for key generation)
 user_states = {}
 
+def get_webapp_url(comp_id=None):
+    custom_url = os.environ.get("WEBAPP_URL", "").strip()
+    if not custom_url:
+        render_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip()
+        if render_url:
+            custom_url = f"{render_url.rstrip('/')}/webapp"
+        else:
+            custom_url = "https://hisobmonitoringbot.onrender.com/webapp"
+    if comp_id:
+        sep = "&" if "?" in custom_url else "?"
+        return f"{custom_url}{sep}comp={comp_id}"
+    return custom_url
+
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        parsed = urllib.parse.urlparse(self.path)
+        req_path = parsed.path
+
+        if req_path in ('/webapp', '/webapp/', '/tma', '/tma/', '/'):
+            html_candidates = [
+                os.path.join(os.path.dirname(__file__), 'webapp', 'index.html'),
+                os.path.join(os.path.dirname(__file__), 'public', 'webapp', 'index.html'),
+                os.path.join(os.path.dirname(__file__), 'dist', 'webapp', 'index.html'),
+            ]
+            content = None
+            for p in html_candidates:
+                if os.path.exists(p):
+                    try:
+                        with open(p, 'rb') as f:
+                            content = f.read()
+                        break
+                    except Exception:
+                        pass
+
+            if content:
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.send_header('Content-Length', str(len(content)))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
+        if req_path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(b'{"status": "ok", "bot": "Novda Telegram Admin Bot 24/7"}')
+            return
+
+        if req_path == '/api/companies':
+            comps = load_companies()
+            data_bytes = json.dumps(comps, ensure_ascii=False).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(data_bytes)
+            return
+
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(b'{"status": "ok", "bot": "Novda Telegram Admin Bot 24/7"}')
 
@@ -203,7 +263,7 @@ def load_config():
         req = urllib.request.Request(url, headers={'User-Agent': 'NovdaBot/1.0'})
         with urllib.request.urlopen(req, timeout=6) as resp:
             data = json.loads(resp.read().decode('utf-8'))
-            if isinstance(data, dict) and 'admin_chat_ids' in data:
+            if isinstance(data, dict):
                 save_config_local(data)
                 return data
     except Exception:
@@ -214,8 +274,20 @@ def load_config():
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception:
-            return {"admin_chat_ids": [DEFAULT_ADMIN_CHAT_ID]}
-    return {"admin_chat_ids": [DEFAULT_ADMIN_CHAT_ID]}
+            pass
+
+    default_cfg = {
+        "super_admin_chat_ids": [DEFAULT_ADMIN_CHAT_ID],
+        "admin_chat_ids": [DEFAULT_ADMIN_CHAT_ID],
+        "company_owners": {
+            "274466315": {
+                "companyId": "comp_novda",
+                "companyName": "Novda",
+                "assignedAt": "2026-09-16T10:26:00"
+            }
+        }
+    }
+    return default_cfg
 
 def save_config_local(cfg):
     try:
@@ -238,6 +310,65 @@ def save_config(cfg):
             pass
     except Exception:
         pass
+
+def is_super_admin(chat_id):
+    cfg = load_config()
+    super_admins = cfg.get('super_admin_chat_ids') or cfg.get('admin_chat_ids') or [DEFAULT_ADMIN_CHAT_ID]
+    try:
+        return int(chat_id) in [int(x) for x in super_admins]
+    except Exception:
+        return False
+
+def get_user_company(chat_id):
+    cfg = load_config()
+    owners = cfg.get('company_owners', {})
+    val = owners.get(str(chat_id)) or owners.get(int(chat_id) if str(chat_id).isdigit() else chat_id)
+    if val:
+        if isinstance(val, dict):
+            return val
+        return {'companyId': str(val), 'companyName': str(val)}
+    return None
+
+def set_company_owner(comp_id, tg_id, comp_name=None):
+    cfg = load_config()
+    if 'company_owners' not in cfg or not isinstance(cfg['company_owners'], dict):
+        cfg['company_owners'] = {}
+    if not comp_name:
+        comps = load_companies()
+        comp_name = comps.get(comp_id, {}).get('name', comp_id)
+    cfg['company_owners'][str(tg_id)] = {
+        'companyId': comp_id,
+        'companyName': comp_name,
+        'assignedAt': datetime.now().isoformat()
+    }
+    save_config(cfg)
+    # Also update companies_meta
+    comps = load_companies()
+    if comp_id in comps:
+        owners = comps[comp_id].get('ownerChatIds', [])
+        if not isinstance(owners, list): owners = []
+        if int(tg_id) not in [int(x) for x in owners]:
+            owners.append(int(tg_id))
+            comps[comp_id]['ownerChatIds'] = owners
+            save_companies(comps)
+    return True
+
+def remove_company_owner(tg_id):
+    cfg = load_config()
+    owners = cfg.get('company_owners', {})
+    str_id = str(tg_id)
+    if str_id in owners:
+        comp_id = owners[str_id].get('companyId') if isinstance(owners[str_id], dict) else owners[str_id]
+        del owners[str_id]
+        cfg['company_owners'] = owners
+        save_config(cfg)
+        if comp_id:
+            comps = load_companies()
+            if comp_id in comps and 'ownerChatIds' in comps[comp_id]:
+                comps[comp_id]['ownerChatIds'] = [x for x in comps[comp_id]['ownerChatIds'] if str(x) != str_id]
+                save_companies(comps)
+        return True
+    return False
 
 def to_base36(val: int) -> str:
     chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -296,18 +427,40 @@ def send_message(chat_id, text, reply_markup=None):
     return telegram_api('sendMessage', params)
 
 def get_main_keyboard():
+    # Faqat Loyiha Egasi (Super Admin) uchun
     return {
         'keyboard': [
+            [
+                {'text': "📱 Barcha Korxonalar Tizimi (Web App)", 'web_app': {'url': get_webapp_url()}}
+            ],
             [
                 {'text': '📋 Barcha Qurilmalar'},
                 {'text': '🏢 Korxonalar (Sexlar)'}
             ],
             [
-                {'text': '⚡ Kalit Yaratish'},
-                {'text': '🔒 Bloklash / Ochish'}
+                {'text': '👥 Korxona Ownerlari'},
+                {'text': '⚡ Kalit Yaratish'}
             ],
             [
-                {'text': '📊 Statistika'},
+                {'text': '🔒 Bloklash / Ochish'},
+                {'text': '📊 Statistika'}
+            ],
+            [
+                {'text': '🔄 Yangilash'}
+            ]
+        ],
+        'resize_keyboard': True,
+        'is_persistent': True
+    }
+
+def get_owner_keyboard(comp_id, comp_name):
+    # Faqat Korxona Owneri uchun (Barcha admin funksiyalar bloklangan!)
+    return {
+        'keyboard': [
+            [
+                {'text': f"📱 {comp_name} Tizimini Ko'rish (Web App)", 'web_app': {'url': get_webapp_url(comp_id)}}
+            ],
+            [
                 {'text': '🔄 Yangilash'}
             ]
         ],
@@ -316,17 +469,90 @@ def get_main_keyboard():
     }
 
 def handle_start(chat_id, first_name):
+    if is_super_admin(chat_id):
+        webapp_url = get_webapp_url()
+        inline_kb = {
+            'inline_keyboard': [
+                [
+                    {'text': "📱 Barcha Korxonalar Tizimi (Web App)", 'web_app': {'url': webapp_url}}
+                ]
+            ]
+        }
+        msg = (
+            f"👋 <b>Assalomu alaykum, {first_name}!</b>\n\n"
+            f"👑 <b>Novda Hisob-Kitob — Loyiha Egasi (Super Admin)</b> boshqaruv botiga xush kelibsiz.\n\n"
+            f"⚡ Sizda tizim ustidan to'liq nazorat mavjud: litsenziyalar, yangi korxonalar ochish va korxona ownerlarini tayinlash.\n\n"
+            f"👇 <i>Quyidagi menyu tugmalaridan birini tanlang:</i>"
+        )
+        send_message(chat_id, msg, inline_kb)
+        send_message(chat_id, "👇 <i>Asosiy boshqaruv menyusi:</i>", get_main_keyboard())
+        return
+
+    comp_info = get_user_company(chat_id)
+    if comp_info:
+        comp_id = comp_info.get('companyId', 'comp_novda')
+        comp_name = comp_info.get('companyName', 'Novda')
+        webapp_url = get_webapp_url(comp_id)
+        inline_kb = {
+            'inline_keyboard': [
+                [
+                    {'text': f"📱 {comp_name} Tizimini Ko'rish (Web App)", 'web_app': {'url': webapp_url}}
+                ]
+            ]
+        }
+        msg = (
+            f"👋 <b>Assalomu alaykum, {first_name}!</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏢 Korxona: <b>{comp_name}</b>\n"
+            f"👤 Siz <b>Korxona Egasi (Owner)</b> sifatida tasdiqlangansiz.\n\n"
+            f"📊 Korxonangizning barcha hisob-kitoblari (oyliklar, sof foyda, modellar, operatsiyalar va topshirilgan pattalar)ni real-vaqtda ko'rish uchun pastdagi tugmani bosing:\n━━━━━━━━━━━━━━━━━━━━"
+        )
+        send_message(chat_id, msg, inline_kb)
+        send_message(chat_id, "👇 <i>Tezkor kirish menyusi:</i>", get_owner_keyboard(comp_id, comp_name))
+        return
+
+    # Not authorized
+    msg = (
+        f"⛔ <b>RUXSAT BERILMAGAN!</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+        f"Sizning Telegram ID: <code>{chat_id}</code>\n\n"
+        f"Ushbu bot faqat loyiha egasi yoki ruxsat berilgan korxona egalari uchun yopiq tizimdir.\n"
+        f"Foydalanish huquqini olish uchun loyiha egasiga (developer) murojaat qiling.\n━━━━━━━━━━━━━━━━━━━━"
+    )
+    send_message(chat_id, msg)
+
+def handle_list_owners(chat_id):
+    if not is_super_admin(chat_id):
+        send_message(chat_id, "⛔ Ushbu amal faqat loyiha egasi uchun ruxsat etilgan.")
+        return
+
     cfg = load_config()
-    admins = cfg.get('admin_chat_ids', [])
-    if chat_id not in admins:
-        admins.append(chat_id)
-        cfg['admin_chat_ids'] = admins
-        save_config(cfg)
+    owners = cfg.get('company_owners', {})
+    super_admins = cfg.get('super_admin_chat_ids', [DEFAULT_ADMIN_CHAT_ID])
 
     msg = (
-        f"👋 <b>Assalomu alaykum, {first_name}!</b>\n\n"
-        f"👑 <b>Novda Hisob-Kitob</b> Admin Boshqaruv Botingizga xush kelibsiz.\n\n"
-        f"👇 <i>Quyidagi qulay menyu tugmalaridan birini tanlang:</i>"
+        f"👥 <b>TIZIM FOYDALANUVCHILARI VA OWNERLAR:</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"👑 <b>Loyiha Egasi (Super Admin):</b>\n"
+    )
+    for sa in super_admins:
+        msg += f"• <code>{sa}</code> (Barcha huquqlar ochiq)\n"
+
+    msg += f"\n🏢 <b>Korxona Egalari (View-Only):</b>\n"
+    if owners:
+        for tg_id, info in owners.items():
+            c_name = info.get('companyName', 'Korxona') if isinstance(info, dict) else 'Korxona'
+            c_id = info.get('companyId', info) if isinstance(info, dict) else info
+            msg += f"• <code>{tg_id}</code> &rarr; <b>{c_name}</b> (<code>{c_id}</code>)\n"
+    else:
+        msg += "<i>Hozircha korxona ownerlari tayinlanmagan.</i>\n"
+
+    msg += (
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"💡 <b>Yangi owner tayinlash:</b>\n"
+        f"<code>/setowner &lt;korxona_kodi&gt; &lt;telegram_id&gt;</code>\n"
+        f"Masalan: <code>/setowner comp_novda 274466315</code>\n\n"
+        f"❌ <b>Ownerni o'chirish:</b>\n"
+        f"<code>/delowner &lt;telegram_id&gt;</code>\n"
+        f"Masalan: <code>/delowner 274466315</code>"
     )
     send_message(chat_id, msg, get_main_keyboard())
 
@@ -410,7 +636,8 @@ def handle_list_companies(chat_id):
         val_status = "🟢 Majburiy" if c_data.get('requireTicketValidation', True) else "⚪ Ixtiyoriy"
         msg += f"🏢 <b>{c_data['name']}</b>\n   🆔 Kod: <code>{c_id}</code> | 💻 Ulangan PC: <b>{dev_count} ta</b>\n   ⚙️ Patta tekshiruvi: <b>{val_status}</b>\n\n"
         buttons.append([
-            {'text': f"🏢 {c_data['name']} ({dev_count} ta PC)", 'callback_data': f'view_comp:{c_id}'}
+            {'text': f"🏢 {c_data['name']} ({dev_count} ta PC)", 'callback_data': f'view_comp:{c_id}'},
+            {'text': "📱 Web App", 'web_app': {'url': get_webapp_url(c_id)}}
         ])
 
     buttons.append([
@@ -789,11 +1016,16 @@ def handle_callback_query(cq):
         
         comp_devices = [dev for dev in db.values() if (dev.get('companyId') or 'company_main') == comp_id]
         
+        cfg = load_config()
+        comp_owners = [str(tid) for tid, o in cfg.get('company_owners', {}).items() if (o.get('companyId') if isinstance(o, dict) else o) == comp_id]
+        owner_display = ", ".join(f"<code>{x}</code>" for x in comp_owners) if comp_owners else "<i>Tayinlanmagan</i>"
+
         msg = (
             f"🏢 <b>KORXONA TAFSILOTLARI:</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"🏢 Nomi: <b>{comp_name}</b>\n"
             f"🆔 Kodi: <code>{comp_id}</code>\n"
+            f"👤 <b>Korxona Owneri:</b> {owner_display}\n"
             f"💻 Ulangan Noutbuklar: <b>{len(comp_devices)} ta</b>\n"
             f"⚙️ <b>Patta/Partiya tekshiruvi:</b> {strict_icon} <b>{strict_label}</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -808,10 +1040,17 @@ def handle_callback_query(cq):
 
         toggle_btn_text = "⚪ Ixtiyoriy qilish (O'chirish)" if is_strict else "🟢 Majburiy qilish (Yoqish)"
         buttons = [
+            [{'text': f"📱 {comp_name} Tizimini Ko'rish (Web App)", 'web_app': {'url': get_webapp_url(comp_id)}}],
+            [{'text': '👤 Owner Biriktirish / O`zgartirish', 'callback_data': f'assign_owner:{comp_id}'}],
             [{'text': f"⚙️ {toggle_btn_text}", 'callback_data': f'toggle_val:{comp_id}'}],
             [{'text': '⬅️ Korxonalar Ro`yxatiga qaytish', 'callback_data': 'back_to_comps'}]
         ]
         send_message(chat_id, msg, {'inline_keyboard': buttons})
+
+    elif action == 'assign_owner':
+        comp_id = parts[1] if len(parts) > 1 else 'company_main'
+        user_states[chat_id] = f'awaiting_owner_id_{comp_id}'
+        send_message(chat_id, f"✍️ <code>{comp_id}</code> korxonasi egasi (owner) uchun <b>Telegram ID</b> raqamini yozing (Masalan: <code>274466315</code>):")
 
     elif action == 'toggle_val':
         comp_id = parts[1] if len(parts) > 1 else 'company_main'
@@ -959,9 +1198,97 @@ def main():
                                 send_message(chat_id, reply, get_main_keyboard())
                             continue
 
-                        # Menu Buttons Handling
+                        # Check owner assignment state
+                        curr_state = user_states.get(chat_id)
+                        if curr_state and str(curr_state).startswith('awaiting_owner_id_'):
+                            comp_id = curr_state.replace('awaiting_owner_id_', '')
+                            user_states[chat_id] = None
+                            owner_id = text.strip()
+                            if not owner_id.isdigit():
+                                send_message(chat_id, "⚠️ Telegram ID faqat raqamlardan iborat bo'lishi kerak. Amal bekor qilindi.", get_main_keyboard())
+                                continue
+                            set_company_owner(comp_id, owner_id)
+                            comps = load_companies()
+                            c_name = comps.get(comp_id, {}).get('name', comp_id)
+                            reply = (
+                                f"✅ <b>KORXONA OWNERI TAYINLANDI!</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                                f"🏢 Korxona: <b>{c_name}</b> (<code>{comp_id}</code>)\n"
+                                f"👤 Telegram ID: <code>{owner_id}</code>\n\n"
+                                f"⚡ Endi ushbu foydalanuvchi botga /start bosganda, faqat o'z korxonasini (Web App) ko'ra oladi."
+                            )
+                            send_message(chat_id, reply, get_main_keyboard())
+                            continue
+
+                        # Check authorization
+                        is_admin = is_super_admin(chat_id)
+                        user_comp = get_user_company(chat_id)
+
+                        if not is_admin and not user_comp:
+                            msg = (
+                                f"⛔ <b>RUXSAT BERILMAGAN!</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                                f"Sizning Telegram ID: <code>{chat_id}</code>\n\n"
+                                f"Ushbu bot yopiq tizimdir. Foydalanish huquqini olish uchun loyiha egasiga murojaat qiling.\n━━━━━━━━━━━━━━━━━━━━"
+                            )
+                            send_message(chat_id, msg)
+                            continue
+
+                        # If user is a Company Owner (NOT super admin):
+                        if user_comp and not is_admin:
+                            comp_id = user_comp.get('companyId', 'comp_novda') if isinstance(user_comp, dict) else str(user_comp)
+                            comp_name = user_comp.get('companyName', 'Novda') if isinstance(user_comp, dict) else comp_id
+                            webapp_url = get_webapp_url(comp_id)
+
+                            if text == '/start' or text == '🔄 Yangilash' or text.startswith('/webapp') or text.startswith('/tizim') or text.startswith('/view') or text.startswith('/owner') or 'Web App' in text:
+                                handle_start(chat_id, user.get('first_name', 'Hurmatli foydalanuvchi'))
+                            else:
+                                send_message(
+                                    chat_id,
+                                    f"ℹ️ <b>{comp_name}</b> korxonasi egasi (owner) hisoblanasiz.\n"
+                                    f"Sizda faqat o'z korxonangiz tizimini ko'rish (View) huquqi mavjud.\n"
+                                    f"Boshqalarga ruxsat berish yoki tizim sozlamalarini o'zgartirish faqat Loyiha Egasi (Super Admin) tomonidan amalga oshiriladi.\n\n"
+                                    f"Tizimni ko'rish uchun pastdagi tugmani bosing:",
+                                    get_owner_keyboard(comp_id, comp_name)
+                                )
+                            continue
+
+                        # Super Admin Commands Handling
                         if text == '/start' or text == '🔄 Yangilash':
                             handle_start(chat_id, user.get('first_name', 'Admin'))
+                        elif text.startswith('/owners') or text == '👥 Korxona Ownerlari':
+                            handle_list_owners(chat_id)
+                        elif text.startswith('/setowner'):
+                            parts = text.split()
+                            if len(parts) >= 3 and parts[2].isdigit():
+                                c_id, o_id = parts[1], parts[2]
+                                set_company_owner(c_id, o_id)
+                                comps = load_companies()
+                                c_name = comps.get(c_id, {}).get('name', c_id)
+                                send_message(chat_id, f"✅ <code>{c_id}</code> ({c_name}) korxonasiga owner biriktirildi: <code>{o_id}</code>", get_main_keyboard())
+                            else:
+                                send_message(chat_id, "⚠️ Format: <code>/setowner &lt;korxona_kodi&gt; &lt;telegram_id&gt;</code>\nMasalan: <code>/setowner comp_novda 274466315</code>", get_main_keyboard())
+                        elif text.startswith('/delowner'):
+                            parts = text.split()
+                            if len(parts) >= 2:
+                                o_id = parts[1]
+                                ok = remove_company_owner(o_id)
+                                if ok:
+                                    send_message(chat_id, f"✅ <code>{o_id}</code> ownerlar ro'yxatidan o'chirildi.", get_main_keyboard())
+                                else:
+                                    send_message(chat_id, f"⚠️ <code>{o_id}</code> ownerlar ro'yxatida topilmadi.", get_main_keyboard())
+                            else:
+                                send_message(chat_id, "⚠️ Format: <code>/delowner &lt;telegram_id&gt;</code>", get_main_keyboard())
+                        elif text.startswith('/webapp') or text.startswith('/tizim') or text.startswith('/owner') or text.startswith('/view') or text == "📱 Barcha Korxonalar Tizimi (Web App)" or text == "📱 Korxona Tizimini Ko'rish (Web App)":
+                            webapp_url = get_webapp_url()
+                            msg = (
+                                f"📱 <b>NOVDA HISOB-KITOB — KORXONA BOSHQARUVI (WEB APP)</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                                f"👑 <i>Korxonaning butun tizimi (oyliklar, sof foyda, modellar, operatsiya narxlari, partiyalar va skanerlangan pattalar)ni jonli ko'rish uchun quyidagi tugmani bosing:</i>\n\n"
+                                f"🌐 {webapp_url}\n━━━━━━━━━━━━━━━━━━━━"
+                            )
+                            send_message(chat_id, msg, {
+                                'inline_keyboard': [
+                                    [{'text': "📱 Tizimni Ko'rish (Web App)", 'web_app': {'url': webapp_url}}]
+                                ]
+                            })
                         elif text == '📋 Barcha Qurilmalar' or text == '/qurilmalar' or text == '/devices':
                             handle_list_devices(chat_id)
                         elif text == '🏢 Korxonalar (Sexlar)' or text == '/korxonalar' or text == '/companies':
@@ -988,7 +1315,12 @@ def main():
                                 handle_start(chat_id, user.get('first_name', 'Admin'))
 
                     elif 'callback_query' in u:
-                        handle_callback_query(u['callback_query'])
+                        cq = u['callback_query']
+                        cq_chat = cq['message']['chat']['id']
+                        if not is_super_admin(cq_chat):
+                            telegram_api('answerCallbackQuery', {'callback_query_id': cq['id'], 'text': "⛔ Faqat loyiha egasi bajara oladi!", 'show_alert': True})
+                        else:
+                            handle_callback_query(cq)
 
         except Exception as e:
             print(f"Xatolik: {e}")
