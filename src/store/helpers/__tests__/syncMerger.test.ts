@@ -226,4 +226,22 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
     expect(result.models.some((m) => m.id === 'Buxoro-slim')).toBe(true);
     expect(result.deletedModelIds).not.toContain('Buxoro-slim');
   });
+
+  it('strips legacy synthetic 200..400 tombstones and allows worker 200 to be added', () => {
+    const syntheticTombstones = Array.from({ length: 201 }, (_, i) => 200 + i); // 200 to 400
+    const local = {
+      workers: [{ id: 200, name: 'Янги ишчи 200' }] as Worker[],
+      deletedWorkerIds: syntheticTombstones,
+      currentPeriod: defaultPeriod
+    };
+
+    const remote: SyncDataPayload = {
+      workers: [],
+      deletedWorkerIds: syntheticTombstones
+    };
+
+    const result = mergeCloudSyncData(local, remote);
+    expect(result.workers.some((w) => w.id === 200)).toBe(true);
+    expect(result.deletedWorkerIds).not.toContain(200);
+  });
 });

@@ -95,8 +95,8 @@ export function mergeCloudSyncData(
     ])
   );
 
-  // If a model is actively present in both local and remote models,
-  // stale tombstones must not suppress active models that exist on both sides.
+  // If a model or worker is actively present in local or remote,
+  // stale tombstones must not suppress active entities.
   const activeModelIdsOnBothSides = new Set<string>();
   const localModelIdSet = new Set((local.models || []).map((m) => m?.id).filter(Boolean));
   for (const m of remote.models || []) {
@@ -109,9 +109,14 @@ export function mergeCloudSyncData(
     (id) => !activeModelIdsOnBothSides.has(id)
   );
 
+  // Strip legacy synthetic phantom tombstones (the 200..400 range batch injected in legacy versions)
+  const safeDeletedWorkerIds = mergedDeletedWorkerIds.filter(
+    (id) => !(id >= 200 && id <= 400 && mergedDeletedWorkerIds.length >= 50)
+  );
+
   const deletedTicketSet = new Set(mergedDeletedTicketIds);
   const deletedPartySet = new Set(mergedDeletedPartyIds);
-  const deletedWorkerSet = new Set(mergedDeletedWorkerIds);
+  const deletedWorkerSet = new Set(safeDeletedWorkerIds);
   const deletedModelSet = new Set(safeDeletedModelIds);
 
   // 2. Workers (Strict ID-based merge)
@@ -353,7 +358,7 @@ export function mergeCloudSyncData(
     availableSizes: mergedSizes,
     deletedTicketIds: mergedDeletedTicketIds,
     deletedPartyIds: mergedDeletedPartyIds,
-    deletedWorkerIds: mergedDeletedWorkerIds,
+    deletedWorkerIds: safeDeletedWorkerIds,
     deletedModelIds: safeDeletedModelIds
   };
 }
