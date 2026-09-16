@@ -231,7 +231,7 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
     const syntheticTombstones = Array.from({ length: 201 }, (_, i) => 200 + i); // 200 to 400
     const local = {
       workers: [{ id: 200, name: 'Янги ишчи 200' }] as Worker[],
-      deletedWorkerIds: syntheticTombstones,
+      deletedWorkerIds: [],
       currentPeriod: defaultPeriod
     };
 

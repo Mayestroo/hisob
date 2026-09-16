@@ -109,22 +109,17 @@ export function mergeCloudSyncData(
     (id) => !activeModelIdsOnBothSides.has(id)
   );
 
-  // Strip legacy synthetic phantom tombstones (the 200..400 range batch injected in legacy versions)
-  const safeDeletedWorkerIds = mergedDeletedWorkerIds.filter(
-    (id) => !(id >= 200 && id <= 400 && mergedDeletedWorkerIds.length >= 50)
-  );
-
+  const localDeletedWorkerSet = new Set(local.deletedWorkerIds || []);
   const deletedTicketSet = new Set(mergedDeletedTicketIds);
   const deletedPartySet = new Set(mergedDeletedPartyIds);
-  const deletedWorkerSet = new Set(safeDeletedWorkerIds);
   const deletedModelSet = new Set(safeDeletedModelIds);
 
   // 2. Workers (Strict ID-based merge)
   const workerMap = new Map<number, Worker>();
 
-  // First seed local base workers
+  // First seed local workers (suppress only if explicitly deleted locally)
   for (const w of local.workers || []) {
-    if (w && typeof w.id === 'number' && !isNaN(w.id) && w.id > 0 && !deletedWorkerSet.has(w.id)) {
+    if (w && typeof w.id === 'number' && !isNaN(w.id) && w.id > 0 && !localDeletedWorkerSet.has(w.id)) {
       workerMap.set(w.id, {
         ...w,
         name: cleanWorkerName(w.name || '') || w.name
@@ -132,9 +127,10 @@ export function mergeCloudSyncData(
     }
   }
 
-  // Merge remote workers by ID
+  // Merge remote workers by ID (suppress if deleted locally or remotely)
   for (const w of remote.workers || []) {
-    if (!w || typeof w.id !== 'number' || isNaN(w.id) || w.id <= 0 || deletedWorkerSet.has(w.id)) continue;
+    if (!w || typeof w.id !== 'number' || isNaN(w.id) || w.id <= 0) continue;
+    if (localDeletedWorkerSet.has(w.id)) continue; // Local explicitly deleted this worker
 
     const rawName = cleanWorkerName(w.name || '') || w.name;
     const existingById = workerMap.get(w.id);
@@ -175,6 +171,10 @@ export function mergeCloudSyncData(
   }
 
   const mergedWorkers = sanitizeWorkers(Array.from(workerMap.values()));
+  const activeWorkerIdSet = new Set(mergedWorkers.map((w) => w.id));
+  const safeDeletedWorkerIds = mergedDeletedWorkerIds.filter(
+    (id) => !activeWorkerIdSet.has(id)
+  );
 
   // 3. Submitted Tickets (Exclude any deleted ticket; deduplicate by ID)
   const ticketMap = new Map<string, SubmittedTicketRecord>();

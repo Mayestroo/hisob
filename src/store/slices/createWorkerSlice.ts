@@ -61,8 +61,9 @@ export const createWorkerSlice: StateCreator<WorkbookStore, [], [], WorkerSlice>
     };
 
     const updatedWorkers = sanitizeWorkers([...state.workers, newWorker]);
-    set({ workers: updatedWorkers });
-    get().saveToDisk({ workers: updatedWorkers });
+    const updatedDeletedWorkerIds = (state.deletedWorkerIds || []).filter((id) => id !== newWorker.id);
+    set({ workers: updatedWorkers, deletedWorkerIds: updatedDeletedWorkerIds });
+    get().saveToDisk({ workers: updatedWorkers, deletedWorkerIds: updatedDeletedWorkerIds });
     state.addNotification('success', "Ishchi qo'shildi", `${newWorker.id}-raqamli yangi ishchi "${cleanName}" qo'shildi.`);
   },
 
