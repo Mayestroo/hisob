@@ -126,6 +126,62 @@ describe('SyncMerger — Offline Multi-PC Conflict-Free Merger', () => {
     expect(result.nextPartyNumber).toBe(12);
   });
 
+  it('merges party by unique ID even if model was renamed, preventing ghost duplicates and preserving cumulative count', () => {
+    const localParty7 = {
+      id: 'rec_1788842891507_2kyj1',
+      partyNumber: '7',
+      modelId: 'ЛОНГ-1',
+      pattaCount: 4,
+      cumulativePattaCount: 57,
+      ishSoni: 320,
+      cumulativeIshSoni: 4560
+    } as unknown as PrintedPartyRecord;
+
+    const remoteParty7 = {
+      id: 'rec_1788842891507_2kyj1',
+      partyNumber: '7',
+      modelId: 'Бухоро ЛОНГ-1',
+      pattaCount: 4,
+      cumulativePattaCount: 57,
+      ishSoni: 320,
+      cumulativeIshSoni: 4560
+    } as unknown as PrintedPartyRecord;
+
+    const party17 = {
+      id: 'rec_1789187156959_o6ti6',
+      partyNumber: '17',
+      modelId: 'Buxoro-Kapalak',
+      pattaCount: 3,
+      cumulativePattaCount: 165,
+      ishSoni: 312,
+      cumulativeIshSoni: 13200
+    } as unknown as PrintedPartyRecord;
+
+    const local = {
+      printedPartyHistory: [localParty7],
+      currentPeriod: defaultPeriod
+    };
+
+    const remote: SyncDataPayload = {
+      printedPartyHistory: [remoteParty7, party17]
+    };
+
+    const result = mergeCloudSyncData(local, remote);
+
+    // Must be 2 unique parties, NOT 3 (Party 7 must NOT be duplicated!)
+    expect(result.printedPartyHistory).toHaveLength(2);
+
+    const mergedParty7 = result.printedPartyHistory?.find((p) => p.id === 'rec_1788842891507_2kyj1');
+    const mergedParty17 = result.printedPartyHistory?.find((p) => p.id === 'rec_1789187156959_o6ti6');
+
+    expect(mergedParty7).toBeDefined();
+    expect(mergedParty7?.modelId).toBe('Бухоро ЛОНГ-1');
+    expect(mergedParty7?.cumulativePattaCount).toBe(57);
+
+    expect(mergedParty17).toBeDefined();
+    expect(mergedParty17?.cumulativePattaCount).toBe(165);
+  });
+
   it('preserves worker #200 and their tickets accurately when remote sends worker #200', () => {
     const local = {
       workers: [

@@ -191,27 +191,29 @@ export function mergeCloudSyncData(
   }
   const mergedSubmittedTickets = Array.from(ticketMap.values());
 
-  // 4. Printed Party History (Exclude any deleted party; merge records)
+  // 4. Printed Party History (Exclude any deleted party; merge records strictly by unique record ID)
   const partyMap = new Map<string, PrintedPartyRecord>();
   for (const p of local.printedPartyHistory || []) {
     if (p && p.id && !deletedPartySet.has(p.id)) {
-      const key = `${p.modelId}_${String(p.partyNumber).trim()}`;
-      partyMap.set(key, p);
+      partyMap.set(p.id, p);
     }
   }
   for (const p of remote.printedPartyHistory || []) {
     if (p && p.id && !deletedPartySet.has(p.id)) {
-      const key = `${p.modelId}_${String(p.partyNumber).trim()}`;
-      const existing = partyMap.get(key);
+      const existing = partyMap.get(p.id);
       if (existing) {
-        partyMap.set(key, {
+        partyMap.set(p.id, {
           ...existing,
           ...p,
+          modelId: p.modelId || existing.modelId,
+          modelName: p.modelName || existing.modelName,
           isClosed: Boolean(existing.isClosed || p.isClosed),
-          closedAt: p.closedAt || existing.closedAt
+          closedAt: p.closedAt || existing.closedAt,
+          cumulativePattaCount: existing.cumulativePattaCount || p.cumulativePattaCount,
+          cumulativeIshSoni: existing.cumulativeIshSoni || p.cumulativeIshSoni
         });
       } else {
-        partyMap.set(key, p);
+        partyMap.set(p.id, p);
       }
     }
   }

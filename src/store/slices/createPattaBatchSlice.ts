@@ -142,8 +142,16 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
 
     let cumPattas = 0;
     let cumIshs = 0;
+    for (const r of working) {
+      if (r.cumulativePattaCount && r.cumulativePattaCount > cumPattas) {
+        cumPattas = r.cumulativePattaCount;
+      }
+      if (r.cumulativeIshSoni && r.cumulativeIshSoni > cumIshs) {
+        cumIshs = r.cumulativeIshSoni;
+      }
+    }
     const updatedHistory = working.map((r) => {
-      if (r.isClosed) {
+      if (r.cumulativePattaCount && r.cumulativePattaCount > 0) {
         return r;
       }
       cumPattas += r.pattaCount || 0;
@@ -227,13 +235,22 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
       }
     }
 
-    // Cumulative stats ni doim to'g'ri qayta hisoblash:
-    // Yopilgan partiyalar o'zining kumulyativ qiymatini saqlaydi,
-    // Faol (yopilmagan) partiyalar uchun esa 0 dan boshlanadi!
+    // Cumulative stats ni saqlash:
+    // Avval chop etilgan partiyalar o'zining kumulyativ qiymatini saqlaydi!
+    // Faqat yangi qo'shilgan partiyalar uchun avvalgi eng yuqori kumulyativdan boshlab hisoblanadi.
     let globalCumPattas = 0;
     let globalCumIshs = 0;
+    for (const r of workingHistory) {
+      if (r.cumulativePattaCount && r.cumulativePattaCount > globalCumPattas) {
+        globalCumPattas = r.cumulativePattaCount;
+      }
+      if (r.cumulativeIshSoni && r.cumulativeIshSoni > globalCumIshs) {
+        globalCumIshs = r.cumulativeIshSoni;
+      }
+    }
+
     const updatedHistory = workingHistory.map((r) => {
-      if (r.isClosed) {
+      if (r.cumulativePattaCount && r.cumulativePattaCount > 0) {
         return r;
       }
       globalCumPattas += r.pattaCount;
@@ -291,25 +308,9 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
     const state = get();
     const filtered = (state.printedPartyHistory || []).filter((r) => r.id !== id);
 
-    let globalCumPattas = 0;
-    let globalCumIshs = 0;
-
-    const recalculated = filtered.map((r) => {
-      if (r.isClosed) {
-        return r;
-      }
-      globalCumPattas += r.pattaCount;
-      globalCumIshs += r.totalIshSoni || r.ishSoni || 0;
-      return {
-        ...r,
-        cumulativePattaCount: globalCumPattas,
-        cumulativeIshSoni: globalCumIshs
-      };
-    });
-
     // Calculate nextPartyNumber as lowest unused positive integer among all printed parties
     const allPartyNums = new Set(
-      recalculated
+      filtered
         .map((r) => parseInt(String(r.partyNumber).trim(), 10))
         .filter((n) => !isNaN(n) && n > 0)
     );
@@ -322,12 +323,12 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
     const updatedDeletedPartyIds = Array.from(new Set([...(state.deletedPartyIds || []), id]));
 
     set({
-      printedPartyHistory: recalculated,
+      printedPartyHistory: filtered,
       nextPartyNumber: resolvedNextParty,
       deletedPartyIds: updatedDeletedPartyIds
     });
     get().saveToDisk({
-      printedPartyHistory: recalculated,
+      printedPartyHistory: filtered,
       nextPartyNumber: resolvedNextParty,
       deletedPartyIds: updatedDeletedPartyIds
     });
@@ -367,27 +368,16 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
         ? Math.round(actualTotalIsh / partyRecord.pattaCount)
         : actualTotalIsh;
 
-    let cumPatta = 0;
-    let cumIsh = 0;
     const updatedHistory = (state.printedPartyHistory || []).map((r) => {
-      cumPatta += r.pattaCount;
       if (r.id === partyRecordId) {
-        cumIsh += actualTotalIsh;
         return {
           ...r,
           ishSoni: actualTotalIsh,
           totalIshSoni: actualTotalIsh,
-          ishSoniPerPatta: newPerPatta,
-          cumulativePattaCount: cumPatta,
-          cumulativeIshSoni: cumIsh
+          ishSoniPerPatta: newPerPatta
         };
       }
-      cumIsh += r.totalIshSoni || r.ishSoni || 0;
-      return {
-        ...r,
-        cumulativePattaCount: cumPatta,
-        cumulativeIshSoni: cumIsh
-      };
+      return r;
     });
 
     set({ printedPartyHistory: updatedHistory });

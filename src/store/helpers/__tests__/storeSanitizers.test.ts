@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeWorkers } from '../storeSanitizers';
+import { sanitizeWorkers, sanitizePrintedPartyHistory } from '../storeSanitizers';
 import { Worker } from '../../../types/workbook';
 
 describe('sanitizeWorkers', () => {
@@ -60,5 +60,37 @@ describe('sanitizeWorkers', () => {
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(205);
     expect(result[0].name).toBe('Алишер Валиев');
+  });
+});
+
+describe('sanitizePrintedPartyHistory', () => {
+  it('preserves existing immutable cumulativePattaCount on party records', () => {
+    const raw = [
+      { id: 'rec_1', partyNumber: '1', modelId: 'm1', pattaCount: 10, cumulativePattaCount: 10 },
+      { id: 'rec_2', partyNumber: '7', modelId: 'm2', pattaCount: 4, cumulativePattaCount: 57 },
+      { id: 'rec_3', partyNumber: '17', modelId: 'm3', pattaCount: 3, cumulativePattaCount: 165 }
+    ];
+
+    const result = sanitizePrintedPartyHistory(raw);
+    expect(result).toHaveLength(3);
+    const p7 = result.find((r) => r.partyNumber === '7');
+    const p17 = result.find((r) => r.partyNumber === '17');
+
+    // Partiya 7 must remain 57, and Partiya 17 must remain 165!
+    expect(p7?.cumulativePattaCount).toBe(57);
+    expect(p17?.cumulativePattaCount).toBe(165);
+  });
+
+  it('deduplicates records with the same ID and merges newest metadata', () => {
+    const raw = [
+      { id: 'rec_same', partyNumber: '7', modelId: 'OldModel', pattaCount: 4, cumulativePattaCount: 57 },
+      { id: 'rec_same', partyNumber: '7', modelId: 'NewModel', pattaCount: 4, cumulativePattaCount: 57 }
+    ];
+
+    const result = sanitizePrintedPartyHistory(raw);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('rec_same');
+    expect(result[0].modelId).toBe('NewModel');
+    expect(result[0].cumulativePattaCount).toBe(57);
   });
 });

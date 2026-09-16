@@ -230,22 +230,83 @@ export function sanitizePattaBatchConfigs(
 
 export function sanitizePrintedPartyHistory(history: any[]): any[] {
   if (!Array.isArray(history) || history.length === 0) return [];
-  const map = new Map<string, any>();
+
+  // 1. Deduplication and normalization by unique record ID
+  const idMap = new Map<string, any>();
   for (const r of history) {
-    if (!r || !r.modelId) continue;
-    const key = `${r.modelId}_${String(r.partyNumber).trim()}`;
-    // Agar bir xil model va bir xil partiya raqami bo'lsa, oxirgi yangi yozuvni saqlaymiz (dublikatni yo'qotamiz)
-    map.set(key, r);
+    if (!r) continue;
+    const cleanId = String(r.id || '').trim();
+    if (!cleanId) continue;
+
+    const existing = idMap.get(cleanId);
+    if (!existing) {
+      idMap.set(cleanId, { ...r, id: cleanId });
+    } else {
+      const merged = {
+        ...existing,
+        ...r,
+        id: cleanId,
+        isClosed: Boolean(existing.isClosed || r.isClosed),
+        closedAt: r.closedAt || existing.closedAt,
+        cumulativePattaCount: existing.cumulativePattaCount || r.cumulativePattaCount,
+        cumulativeIshSoni: existing.cumulativeIshSoni || r.cumulativeIshSoni
+      };
+      if (r.modelId && String(r.modelId).trim()) {
+        merged.modelId = r.modelId;
+      }
+      idMap.set(cleanId, merged);
+    }
   }
-  let cumPattas = 0;
-  let cumIshs = 0;
-  return Array.from(map.values()).map((r) => {
-    cumPattas += Number(r.pattaCount) || 0;
-    cumIshs += Number(r.totalIshSoni || r.ishSoni) || 0;
+
+  // Include any legacy records that had no ID
+  for (const r of history) {
+    if (!r || (r.id && String(r.id).trim())) continue;
+    const key = `${String(r.modelId || '').trim()}_${String(r.partyNumber || '').trim()}`;
+    const generatedId = `rec_legacy_${key}`;
+    if (!idMap.has(generatedId)) {
+      idMap.set(generatedId, { ...r, id: generatedId });
+    }
+  }
+
+  // 2. Sort chronologically: by cumulativePattaCount (if both > 0) or by creation timestamp
+  const sorted = Array.from(idMap.values()).sort((a, b) => {
+    const cumA = Number(a.cumulativePattaCount) || 0;
+    const cumB = Number(b.cumulativePattaCount) || 0;
+    if (cumA > 0 && cumB > 0) return cumA - cumB;
+    const timeA = parseInt((a.id || '').replace(/^rec_(\d+).*/, '$1'), 10) || 0;
+    const timeB = parseInt((b.id || '').replace(/^rec_(\d+).*/, '$1'), 10) || 0;
+    return timeA - timeB;
+  });
+
+  // 3. Preserve existing cumulative counts! Physical paper tickets have fixed numbers printed on them.
+  let runningCumPattas = 0;
+  let runningCumIshs = 0;
+
+  return sorted.map((r) => {
+    const pCount = Number(r.pattaCount) || 0;
+    const ishCount = Number(r.totalIshSoni || r.ishSoni) || 0;
+
+    let cumPatta = Number(r.cumulativePattaCount);
+    let cumIsh = Number(r.cumulativeIshSoni);
+
+    if (!cumPatta || cumPatta <= 0) {
+      runningCumPattas += pCount;
+      cumPatta = runningCumPattas;
+    } else {
+      runningCumPattas = Math.max(runningCumPattas, cumPatta);
+    }
+
+    if (!cumIsh || cumIsh <= 0) {
+      runningCumIshs += ishCount;
+      cumIsh = runningCumIshs;
+    } else {
+      runningCumIshs = Math.max(runningCumIshs, cumIsh);
+    }
+
     const cleanR: any = {
       ...r,
-      cumulativePattaCount: cumPattas,
-      cumulativeIshSoni: cumIshs
+      cumulativePattaCount: cumPatta,
+      cumulativeIshSoni: cumIsh
     };
     if (cleanR.closedAt === undefined) {
       delete cleanR.closedAt;

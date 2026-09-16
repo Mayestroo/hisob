@@ -1,0 +1,61 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "openai/gpt-5.6-terra",
+  "small_model": "openai/gpt-5.4-mini-fast",
+  "agent": {
+    "build": {
+      "mode": "primary",
+      "model": "openai/gpt-5.6-terra",
+      "permission": {
+        "edit": "ask",
+        "bash": "ask",
+        "task": {
+          "*": "allow"
+        }
+      }
+    },
+    "plan": {
+      "mode": "primary",
+      "model": "openai/gpt-5.6-terra",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "task": {
+          "*": "allow"
+        }
+      }
+    },
+    "quick-scan": {
+      "description": "Loyihadagi fayllarni TEZ skanerlab, sintaksis xatolari, ishlatilmagan kod, importlar, oddiy kod-sifat va style muammolarini topadi. Katta hajmdagi fayllarni arzon va tez ko'rib chiqish uchun ishlatiladi. Har doim bir nechta faylni parallel tekshirishda ishlatiladi.",
+      "mode": "subagent",
+      "model": "openai/gpt-5.6-luna-fast",
+      "steps": 10,
+      "permission": {
+        "edit": "deny",
+        "bash": "ask",
+        "webfetch": "deny"
+      }
+    },
+    "deep-audit": {
+      "description": "Xavfsizlik zaifliklari (SQL Injection, XSS, auth muammolari), murakkab mantiqiy xatolar, race condition, memory leak, arxitektura darajasidagi muammolar kabi CHUQUR tahlil va yuqori aniqlik talab qiladigan holatlarni tekshiradi. quick-scan Critical yoki High darajali shubhali joy topganda, uni TASDIQLASH va to'liq tahlil qilish uchun albatta shu subagent chaqiriladi. BIR CHAQIRUVDA BIR NECHTA topilmani birga yuborish kerak, har birini alohida yubormang.",
+      "mode": "subagent",
+      "model": "openai/gpt-6-astra-fast",
+      "reasoningEffort": "medium",
+      "steps": 12,
+      "permission": {
+        "edit": "deny",
+        "bash": "ask",
+        "webfetch": "allow"
+      }
+    },
+    "fixer": {
+      "description": "Audit orqali aniqlangan va foydalanuvchi tomonidan TASDIQLANGAN xatolarni real kodda tuzatadi. Faqat aniq tasdiqdan keyin ishlatiladi, o'z-o'zidan xato tuzatishga kirishmaydi.",
+      "mode": "subagent",
+      "model": "openai/gpt-5.6-terra",
+      "permission": {
+        "edit": "allow",
+        "bash": "ask"
+      }
+    }
+  }
+}
