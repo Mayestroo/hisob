@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useWorkbookStore } from '../store/workbookStore';
 import { CustomSelect } from './CustomSelect';
-import { formatMoney } from '../utils/formatters';
+import { formatMoney, formatTicketDateTime } from '../utils/formatters';
 
 export const KonveyerView: React.FC = () => {
   const submittedTickets = useWorkbookStore((s) => s.submittedTickets);
@@ -888,7 +888,7 @@ export const KonveyerView: React.FC = () => {
                                   <thead>
                                     <tr style={{ height: '30px', backgroundColor: 'var(--bg-surface-subtle)' }}>
                                       <th style={{ width: '50px', textAlign: 'center' }}>№</th>
-                                      <th style={{ width: '90px', textAlign: 'center' }}>Vaqt</th>
+                                      <th style={{ width: '135px', textAlign: 'center' }}>Vaqt</th>
                                       <th style={{ textAlign: 'left', paddingLeft: '10px' }}>Model</th>
                                       <th style={{ width: '90px', textAlign: 'center' }}>Partiya</th>
                                       <th style={{ width: '90px', textAlign: 'center' }}>Patta №</th>
@@ -903,7 +903,7 @@ export const KonveyerView: React.FC = () => {
                                       return (
                                         <tr key={t.id || tIdx} style={{ height: '30px' }}>
                                           <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{tIdx + 1}</td>
-                                          <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t.submittedAt || '—'}</td>
+                                          <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '11.5px', whiteSpace: 'nowrap' }}>{formatTicketDateTime(t)}</td>
                                           <td style={{ paddingLeft: '10px', fontWeight: 600 }}>{m?.name || t.modelId}</td>
                                           <td style={{ textAlign: 'center', fontWeight: 700 }}>{t.partyNumber}</td>
                                           <td style={{ textAlign: 'center', fontWeight: 700, color: '#fbbf24' }}>#{t.pattaNumber}</td>
@@ -1038,7 +1038,7 @@ export const KonveyerView: React.FC = () => {
               <thead>
                 <tr style={{ height: '32px', backgroundColor: 'var(--bg-surface-subtle)' }}>
                   <th style={{ width: '45px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>№</th>
-                  <th style={{ width: '85px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>Vaqt</th>
+                  <th style={{ width: '135px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>Vaqt</th>
                   <th style={{ width: '130px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>Konveyer</th>
                   <th style={{ width: '160px', paddingLeft: '14px', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>Model</th>
                   <th style={{ width: '90px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>Partiya</th>
@@ -1070,10 +1070,10 @@ export const KonveyerView: React.FC = () => {
                       <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', fontWeight: 600 }}>
                         {t.globalSeq}
                       </td>
-                      <td style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <td style={{ textAlign: 'center', fontSize: '11.5px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           <Clock size={11} />
-                          {t.submittedAt || '—'}
+                          {formatTicketDateTime(t)}
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }}>

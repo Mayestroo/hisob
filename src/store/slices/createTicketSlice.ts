@@ -3,6 +3,7 @@ import { WorkbookStore, TicketSlice } from '../types';
 import { TicketFormState, SubmittedTicketRecord } from '../../types/workbook';
 import { validateTicketForSubmission } from '../../domain/ticketValidation';
 import { triggerDebouncedSave } from '../helpers/debounceSave';
+import { formatTicketTimestamp } from '../../utils/formatters';
 
 export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice> = (set, get) => ({
   ticketForms: {},
@@ -147,7 +148,7 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
       color: form.color || '',
       qty,
       entries: filledEntries,
-      submittedAt: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+      submittedAt: formatTicketTimestamp(new Date())
     };
     const updatedSubmittedTickets = [...(state.submittedTickets || []), submittedRecord];
 

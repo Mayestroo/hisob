@@ -21,6 +21,7 @@ import {
 import { useWorkbookStore, DEFAULT_BATCH_SIZES } from '../store/workbookStore';
 import { PrintedPartyRecord, SubmittedTicketRecord } from '../types/workbook';
 import { buildPartyTicketsList, getPartyHealth } from '../domain/partyAnalytics';
+import { formatTicketDateTime } from '../utils/formatters';
 
 export const PattaHisobView: React.FC = () => {
   const availableSizes = useWorkbookStore((s) => s.availableSizes);
@@ -1549,8 +1550,8 @@ export const PattaHisobView: React.FC = () => {
                                                               </span>
                                                             )}
                                                           </td>
-                                                          <td style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-                                                            {t.submittedAt || '—'}
+                                                          <td style={{ color: 'var(--text-muted)', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                                                            {formatTicketDateTime(t)}
                                                           </td>
                                                           {!isArchiveMode && !isAllTimeMode && (
                                                             <td style={{ textAlign: 'center' }}>

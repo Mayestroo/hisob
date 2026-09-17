@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useWorkbookStore } from '../../store/workbookStore';
 import { X, Layers, Search, Download, Clock } from 'lucide-react';
 import { formatMoney } from '../../engine/formulaEngine';
+import { formatTicketDateTime } from '../../utils/formatters';
 
 interface WorkerOperationRecord {
   id: string;
@@ -70,7 +71,7 @@ export const WorkerDetailModal: React.FC = () => {
           records.push({
             id: `${ticket.id}_${entry.opName}`,
             ticketId: ticket.id,
-            submittedAt: ticket.submittedAt || '—',
+            submittedAt: formatTicketDateTime(ticket),
             konveyer: ticket.konveyer ? `${ticket.konveyer}-Konveyer` : '—',
             modelId: ticket.modelId,
             modelName: mName,
