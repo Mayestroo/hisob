@@ -348,8 +348,8 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
           if (overrideState.deletedWorkerIds !== undefined) syncPayload.deletedWorkerIds = overrideState.deletedWorkerIds;
           if (overrideState.deletedModelIds !== undefined) syncPayload.deletedModelIds = overrideState.deletedModelIds;
         } else {
-          // To'liq saqlash (masalan: dastur ochilganda yoki qo'lda Ctrl+S bosilganda)
-          writeMode = 'set';
+          // Xavfsiz to'liq yangilash (Ctrl+S yoki dastur bootstrap) — boshqa PC'larni o'chirib yubormaslik uchun faqat update rejimida
+          writeMode = 'update';
           syncPayload = {
             workers: sanitizeWorkers(payload.workers),
             models: payload.models,
@@ -375,22 +375,28 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
       }
     }
 
-    // Electron IPC mode - asynchronous non-blocking disk persistence
+    // Electron IPC mode - asynchronous serialized disk persistence
     if (eAPI) {
       try {
         const companyId = overrideState?.companyId || options?.companyId || state.licenseStatus?.companyId || 'company_main';
         const writeOpts = { ...options, companyId };
-        let result;
+        let result: any;
         if (overrideState && !options?.forceBackup && eAPI.dbPatch) {
           result = await eAPI.dbPatch({ ...overrideState, companyId }, writeOpts);
         } else {
           result = await eAPI.dbWrite({ ...payload, companyId }, writeOpts);
         }
-        if (result.success && !state.isServerConnected) {
-          set({ isServerConnected: true });
+        if (result?.success) {
+          if (!state.isServerConnected) {
+            set({ isServerConnected: true });
+          }
+        } else {
+          console.error('[Store] Electron IPC write failed:', result?.error);
+          state.addNotification('error', 'Saqlash xatosi', result?.error || "Mahalliy diskka saqlab bo'lmadi");
         }
-      } catch (e) {
-        console.warn('[Store] Electron IPC write failed', e);
+      } catch (e: any) {
+        console.warn('[Store] Electron IPC write exception:', e);
+        state.addNotification('error', 'Disk xatosi', e?.message || "Mahalliy diskka yozishda uzilish yuz berdi");
       }
       return;
     }

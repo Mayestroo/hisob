@@ -18,7 +18,8 @@
     "dist:patch": "node scripts/release.cjs patch",
     "dist:minor": "node scripts/release.cjs minor",
     "dist:major": "node scripts/release.cjs major",
-    "dist:local": "tsc && vite build && electron-builder --win nsis"
+    "dist:local": "tsc && vite build && electron-builder --win nsis",
+    "backup:firebase": "node scripts/backup_firebase.cjs"
   },
   "build": {
     "appId": "com.novda.hisob",

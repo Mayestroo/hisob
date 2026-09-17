@@ -8,12 +8,57 @@ function setupServer(customDataDir, distDir) {
   const app = express();
   const PORT = 3001;
 
-  app.use(cors());
+  // Strict CORS: only allow local loopback origins
+  const allowedOrigins = [
+    'http://127.0.0.1:3000',
+    'http://localhost:3000',
+    'http://127.0.0.1:3001',
+    'http://localhost:3001'
+  ];
+  app.use(cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS bloklandi: Ruxsat berilmagan origin'));
+      }
+    }
+  }));
   app.use(express.json({ limit: '50mb' }));
+
+  // API Token verification if configured
+  const expectedToken = process.env.NOVDA_API_TOKEN;
+  if (expectedToken) {
+    app.use('/api', (req, res, next) => {
+      const token = req.headers['x-api-token'] || (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+      if (token !== expectedToken) {
+        return res.status(401).json({ success: false, error: 'Autentifikatsiya xatosi: Noto\'g\'ri API token' });
+      }
+      next();
+    });
+  }
 
   const DATA_DIR = customDataDir || path.join(__dirname, '..', 'data');
   const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
   const ARCHIVES_DIR = path.join(DATA_DIR, 'archives');
+
+  function sanitizeFilename(filename) {
+    if (!filename || typeof filename !== 'string') return null;
+    const base = path.basename(filename);
+    if (!/^[a-zA-Z0-9_\-.]+\.(json|xlsx)$/i.test(base)) return null;
+    return base;
+  }
+
+  function resolveServerPath(dir, filename) {
+    const safeName = sanitizeFilename(filename);
+    if (!safeName) return null;
+    const resolvedDir = path.resolve(dir);
+    const target = path.resolve(resolvedDir, safeName);
+    if (!target.startsWith(resolvedDir + path.sep) && target !== resolvedDir) {
+      return null;
+    }
+    return target;
+  }
   const DB_FILE = path.join(DATA_DIR, 'hisob_database.json');
   const LOG_FILE = path.join(DATA_DIR, 'history_log.txt');
   const LIVE_EXCEL_FILE = path.join(DATA_DIR, 'Novda_Hisob_Oxirgi.xlsx');
@@ -154,12 +199,14 @@ function setupServer(customDataDir, distDir) {
   }
 
   // API Routes
-  app.get('/api/data', (req, res) => {
+  app.get('/api/data', async (req, res) => {
     try {
-      if (!fs.existsSync(DB_FILE)) {
+      try {
+        await fs.promises.access(DB_FILE);
+      } catch {
         return res.json({ success: true, data: null });
       }
-      const raw = fs.readFileSync(DB_FILE, 'utf-8');
+      const raw = await fs.promises.readFile(DB_FILE, 'utf-8');
       const json = JSON.parse(raw);
       res.json({ success: true, data: json });
     } catch (err) {
@@ -189,25 +236,41 @@ function setupServer(customDataDir, distDir) {
     }
   });
 
-  app.get('/api/archives', (req, res) => {
+  app.get('/api/archives', async (req, res) => {
     try {
-      if (!fs.existsSync(ARCHIVES_DIR)) return res.json({ success: true, archives: [] });
-      const files = fs.readdirSync(ARCHIVES_DIR).filter(f => f.endsWith('.json')).reverse();
-      const list = files.map(filename => {
-        const fullPath = path.join(ARCHIVES_DIR, filename);
-        const raw = fs.readFileSync(fullPath, 'utf-8');
-        const data = JSON.parse(raw);
-        const excelName = filename.replace('.json', '.xlsx');
-        const hasExcel = fs.existsSync(path.join(ARCHIVES_DIR, `Novda_Hisob_${excelName}`));
-        return {
-          filename,
-          excelFilename: `Novda_Hisob_${excelName}`,
-          hasExcel,
-          period: data.period,
-          archivedAt: data.archivedAt,
-          workersCount: (data.workers || []).length
-        };
-      });
+      try {
+        await fs.promises.access(ARCHIVES_DIR);
+      } catch {
+        return res.json({ success: true, archives: [] });
+      }
+      const files = (await fs.promises.readdir(ARCHIVES_DIR)).filter(f => f.endsWith('.json')).reverse();
+      const list = await Promise.all(files.map(async filename => {
+        const fullPath = resolveServerPath(ARCHIVES_DIR, filename);
+        if (!fullPath) return { filename };
+        try {
+          const raw = await fs.promises.readFile(fullPath, 'utf-8');
+          const data = JSON.parse(raw);
+          const excelName = filename.replace('.json', '.xlsx');
+          const excelPath = resolveServerPath(ARCHIVES_DIR, `Novda_Hisob_${excelName}`);
+          let hasExcel = false;
+          if (excelPath) {
+            try {
+              await fs.promises.access(excelPath);
+              hasExcel = true;
+            } catch {}
+          }
+          return {
+            filename,
+            excelFilename: `Novda_Hisob_${excelName}`,
+            hasExcel,
+            period: data.period,
+            archivedAt: data.archivedAt,
+            workersCount: (data.workers || []).length
+          };
+        } catch {
+          return { filename };
+        }
+      }));
       res.json({ success: true, archives: list });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -229,41 +292,53 @@ function setupServer(customDataDir, distDir) {
     try {
       const archiveData = req.body;
       if (!archiveData) return res.status(400).json({ error: 'No data provided' });
-      const filename = archiveData.period?.archiveFilename || `archive_${Date.now()}.json`;
-      const target = path.join(ARCHIVES_DIR, filename);
+      const rawName = archiveData.period?.archiveFilename || `archive_${Date.now()}.json`;
+      const target = resolveServerPath(ARCHIVES_DIR, rawName);
+      if (!target) {
+        return res.status(400).json({ success: false, error: 'Noto\'g\'ri yoki xavfli arxiv fayl nomi' });
+      }
       await fs.promises.writeFile(target, JSON.stringify(archiveData, null, 2), 'utf-8');
-      res.json({ success: true, filename });
+      res.json({ success: true, filename: path.basename(target) });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
   });
 
-  app.get('/api/backups', (req, res) => {
+  app.get('/api/backups', async (req, res) => {
     try {
-      const bFiles = fs.existsSync(BACKUPS_DIR)
-        ? fs.readdirSync(BACKUPS_DIR).filter((f) => f.endsWith('.json')).map((f) => ({ filename: f, dir: BACKUPS_DIR, isArchive: false }))
-        : [];
-      const aFiles = fs.existsSync(ARCHIVES_DIR)
-        ? fs.readdirSync(ARCHIVES_DIR).filter((f) => f.endsWith('.json')).map((f) => ({ filename: f, dir: ARCHIVES_DIR, isArchive: true }))
-        : [];
+      let bFiles = [];
+      try {
+        bFiles = (await fs.promises.readdir(BACKUPS_DIR)).filter(f => f.endsWith('.json')).map(f => ({ filename: f, dir: BACKUPS_DIR, isArchive: false }));
+      } catch {}
+
+      let aFiles = [];
+      try {
+        aFiles = (await fs.promises.readdir(ARCHIVES_DIR)).filter(f => f.endsWith('.json')).map(f => ({ filename: f, dir: ARCHIVES_DIR, isArchive: true }));
+      } catch {}
+
       const all = [...aFiles, ...bFiles];
-      const backups = all.map((item) => {
+      const backups = await Promise.all(all.map(async item => {
+        const fullPath = resolveServerPath(item.dir, item.filename);
+        if (!fullPath) {
+          return { filename: item.filename, size: 0, createdAt: '', isArchive: item.isArchive, workersCount: 0, modelsCount: 0 };
+        }
         try {
-          const fullPath = path.join(item.dir, item.filename);
-          const stat = fs.statSync(fullPath);
-          const raw = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+          const stat = await fs.promises.stat(fullPath);
+          const raw = await fs.promises.readFile(fullPath, 'utf-8');
+          const data = JSON.parse(raw);
           return {
             filename: item.filename,
             size: stat.size,
             createdAt: stat.mtime.toISOString(),
             isArchive: item.isArchive,
-            workersCount: (raw.workers || []).length,
-            modelsCount: (raw.models || []).length
+            workersCount: (data.workers || []).length,
+            modelsCount: (data.models || []).length
           };
         } catch {
           return { filename: item.filename, size: 0, createdAt: '', isArchive: item.isArchive, workersCount: 0, modelsCount: 0 };
         }
-      }).sort((a, b) => (b.filename > a.filename ? 1 : -1));
+      }));
+      backups.sort((a, b) => (b.filename > a.filename ? 1 : -1));
       res.json({ success: true, backups });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -274,12 +349,25 @@ function setupServer(customDataDir, distDir) {
     try {
       const { filename } = req.body;
       if (!filename) return res.status(400).json({ error: 'Filename is required' });
-      let filepath = path.join(BACKUPS_DIR, filename);
-      if (!fs.existsSync(filepath)) {
-        filepath = path.join(ARCHIVES_DIR, filename);
+      let filepath = resolveServerPath(BACKUPS_DIR, filename);
+      let exists = false;
+      if (filepath) {
+        try {
+          await fs.promises.access(filepath);
+          exists = true;
+        } catch {}
       }
-      if (!fs.existsSync(filepath)) {
-        return res.status(404).json({ success: false, error: 'Zaxira fayli topilmadi' });
+      if (!exists) {
+        filepath = resolveServerPath(ARCHIVES_DIR, filename);
+        if (filepath) {
+          try {
+            await fs.promises.access(filepath);
+            exists = true;
+          } catch {}
+        }
+      }
+      if (!exists || !filepath) {
+        return res.status(404).json({ success: false, error: 'Zaxira fayli topilmadi yoki ruxsat berilmagan' });
       }
       const raw = await fs.promises.readFile(filepath, 'utf-8');
       const data = JSON.parse(raw);
@@ -290,14 +378,19 @@ function setupServer(customDataDir, distDir) {
     }
   });
 
-  app.get('/api/download-archive/:filename', (req, res) => {
+  app.get('/api/download-archive/:filename', async (req, res) => {
     try {
       const { filename } = req.params;
-      const target = path.join(ARCHIVES_DIR, filename);
-      if (!fs.existsSync(target)) {
+      const target = resolveServerPath(ARCHIVES_DIR, filename);
+      if (!target) {
+        return res.status(400).send('Noto\'g\'ri arxiv fayl nomi');
+      }
+      try {
+        await fs.promises.access(target);
+      } catch {
         return res.status(404).send('Arxiv fayli topilmadi');
       }
-      res.download(target, filename);
+      res.download(target, path.basename(target));
     } catch (err) {
       res.status(500).send(err.message);
     }

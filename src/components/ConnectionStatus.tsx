@@ -18,16 +18,24 @@ export const ConnectionStatus: React.FC<{ style?: React.CSSProperties }> = ({ st
 
   const handleManualSync = async () => {
     if (online && pendingCount > 0 && !syncing) {
-      const res = await flushOfflineQueue();
-      setPendingCount(res.remaining);
+      try {
+        const res = await flushOfflineQueue();
+        setPendingCount(res.remaining);
+      } catch (err: any) {
+        console.error('Failed to flush offline queue:', err);
+      }
     }
   };
 
   useEffect(() => {
     let mounted = true;
     const checkCount = async () => {
-      const count = await getPendingCount();
-      if (mounted) setPendingCount(count);
+      try {
+        const count = await getPendingCount();
+        if (mounted) setPendingCount(count);
+      } catch (err) {
+        console.error('Failed to get pending queue count:', err);
+      }
     };
 
     checkCount();
@@ -84,7 +92,7 @@ export const ConnectionStatus: React.FC<{ style?: React.CSSProperties }> = ({ st
         <span
           style={{
             marginLeft: '2px',
-            background: 'var(--accent-danger)',
+            background: 'var(--status-error)',
             color: '#fff',
             borderRadius: '10px',
             padding: '1px 5px',

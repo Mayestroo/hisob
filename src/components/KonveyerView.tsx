@@ -75,7 +75,9 @@ export const KonveyerView: React.FC = () => {
 
     let total = 0;
     for (const entry of ticket.entries || []) {
-      const rate = opRateMap.get(entry.opName) || 0;
+      const rate = entry.rateSnapshot !== undefined && entry.rateSnapshot > 0
+        ? entry.rateSnapshot
+        : (opRateMap?.get(entry.opName) || 0);
       total += rate * ticket.qty;
     }
     return total;
@@ -284,10 +286,16 @@ export const KonveyerView: React.FC = () => {
     });
   }, [submittedTickets, selectedKonveyer, selectedModel, selectedParty, searchQuery, modelMap]);
 
+  const toCsvCell = (value: unknown) => {
+    const text = String(value ?? '');
+    const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${safeText.replace(/"/g, '""')}"`;
+  };
+
   // Export Matrix to CSV
   const handleExportMatrixCSV = () => {
-    const modelHeaders = displayedModels.map((m) => 
-      `"${m.name.replace(/^(Модел-\s*|Модель-\s*|Model-\s*)+/i, '').trim()}"`
+    const modelHeaders = displayedModels.map((m) =>
+      toCsvCell(m.name.replace(/^(Модел-\s*|Модель-\s*|Model-\s*)+/i, '').trim())
     );
     const headers = ['№', 'Konveyer', ...modelHeaders, 'Jami Ish (dona)', 'Jami Patta'];
 
@@ -296,7 +304,7 @@ export const KonveyerView: React.FC = () => {
       const modelCells = displayedModels.map((m) => row?.modelBreakdown[m.id]?.qty || 0);
       return [
         idx + 1,
-        `"${k ? (k === 'Noma\'lum' ? k : `${k}-Konveyer`) : 'Noma\'lum'}"`,
+        toCsvCell(k ? (k === 'Noma\'lum' ? k : `${k}-Konveyer`) : 'Noma\'lum'),
         ...modelCells,
         row?.totalQty || 0,
         row?.totalPattas || 0
@@ -307,7 +315,7 @@ export const KonveyerView: React.FC = () => {
     const totalModelCells = displayedModels.map((m) => modelTotals[m.id]?.totalQty || 0);
     const grandRow = [
       '',
-      '"ЖАМИ (ИТОГО)"',
+      toCsvCell('ЖАМИ (ИТОГО)'),
       ...totalModelCells,
       grandTotals.totalQty,
       grandTotals.totalPattas

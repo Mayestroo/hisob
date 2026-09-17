@@ -69,18 +69,43 @@ export function sanitizeWorkers(wList: any[]): Worker[] {
   if (!Array.isArray(wList)) return [];
 
   const workerMap = new Map<number, Worker>();
-  const sorted = [...wList].filter((w) => w && typeof w.id === 'number' && w.id > 0).sort((a, b) => a.id - b.id);
+  const validList = [...wList].filter((w) => w && typeof w.id === 'number' && w.id > 0);
 
-  for (const w of sorted) {
+  for (const w of validList) {
     const cleanName = cleanWorkerName(w.name || '');
-    workerMap.set(w.id, {
+    const current: Worker = {
       ...w,
       id: w.id,
       name: cleanName || w.name,
       avans: Math.max(0, Number(w.avans) || 0),
       jarima: Math.max(0, Number(w.jarima) || 0),
       staj: Math.max(0, Number(w.staj) || 0)
-    });
+    };
+
+    const existing = workerMap.get(w.id);
+    if (!existing) {
+      workerMap.set(w.id, current);
+    } else {
+      const existingTime = existing.updatedAt || 0;
+      const currentTime = current.updatedAt || 0;
+      if (currentTime > existingTime) {
+        workerMap.set(w.id, {
+          ...existing,
+          ...current,
+          name: current.name || existing.name
+        });
+      } else if (currentTime < existingTime) {
+        if (!existing.name && current.name) {
+          workerMap.set(w.id, { ...existing, name: current.name });
+        }
+      } else {
+        workerMap.set(w.id, {
+          ...existing,
+          ...current,
+          name: current.name || existing.name
+        });
+      }
+    }
   }
 
   return Array.from(workerMap.values()).sort((a, b) => a.id - b.id);
@@ -375,6 +400,28 @@ export function reconcileModelHisobQuantities(
           }
           existingHq[wId] = currentWorkerOps;
         }
+      }
+    }
+
+    // 3. Stale va nol/not-finite bo'lgan operatsiyalarni tozalaymiz
+    const validOps = new Set((m.operations || []).map((o) => o.name));
+    for (const [wIdStr, ops] of Object.entries(existingHq)) {
+      if (!ops || typeof ops !== 'object') continue;
+      const wId = Number(wIdStr);
+      let workerOpsChanged = false;
+      const cleanedOps = { ...ops };
+      for (const [opKey, val] of Object.entries(ops)) {
+        const hasTicketCount = computedHq?.[wId]?.[opKey] !== undefined;
+        const isValidModelOp = validOps.has(opKey);
+        const numVal = Number(val);
+        if ((!isValidModelOp && !hasTicketCount) || !Number.isFinite(numVal) || numVal <= 0) {
+          delete cleanedOps[opKey];
+          workerOpsChanged = true;
+        }
+      }
+      if (workerOpsChanged) {
+        existingHq[wId] = cleanedOps;
+        changed = true;
       }
     }
 

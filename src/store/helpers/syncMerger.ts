@@ -191,15 +191,17 @@ export function mergeCloudSyncData(
   }
   const mergedSubmittedTickets = Array.from(ticketMap.values());
 
-  // 4. Printed Party History (Exclude any deleted party; merge records strictly by unique record ID)
+  // 4. Printed Party History (Exclude any deleted party; merge records strictly by unique record ID and business key)
   const partyMap = new Map<string, PrintedPartyRecord>();
   for (const p of local.printedPartyHistory || []) {
-    if (p && p.id && !deletedPartySet.has(p.id)) {
+    const partyKey = `${p?.modelId}#${p?.partyNumber}`;
+    if (p && p.id && !deletedPartySet.has(p.id) && !deletedPartySet.has(partyKey)) {
       partyMap.set(p.id, p);
     }
   }
   for (const p of remote.printedPartyHistory || []) {
-    if (p && p.id && !deletedPartySet.has(p.id)) {
+    const partyKey = `${p?.modelId}#${p?.partyNumber}`;
+    if (p && p.id && !deletedPartySet.has(p.id) && !deletedPartySet.has(partyKey)) {
       const existing = partyMap.get(p.id);
       if (existing) {
         partyMap.set(p.id, {

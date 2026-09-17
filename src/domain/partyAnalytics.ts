@@ -46,6 +46,13 @@ export function buildPartyTicketsList(
     );
   });
 
+  const ticketByPattaNumber = new Map<number, SubmittedTicketRecord>();
+  for (const t of relevantTickets) {
+    if (t.pattaNumber !== undefined && t.pattaNumber !== null && !ticketByPattaNumber.has(t.pattaNumber)) {
+      ticketByPattaNumber.set(t.pattaNumber, t);
+    }
+  }
+
   let currentPattaIndex = 1;
   const sizesObj = partyRecord.sizes || {};
   const ishSoniPerPatta = partyRecord.ishSoniPerPatta || partyRecord.ishSoni || 1;
@@ -71,10 +78,8 @@ export function buildPartyTicketsList(
         continue;
       }
 
-      // Check both relative number (1, 2, 3...) and sequential printed number (5, 6, 7...)
-      const sub = relevantTickets.find(
-        (t) => t.pattaNumber === relNum || t.pattaNumber === actualSeqNum
-      );
+      // O(1) Map lookup for both relative number (1, 2, 3...) and sequential printed number (5, 6, 7...)
+      const sub = ticketByPattaNumber.get(actualSeqNum) || ticketByPattaNumber.get(relNum);
       const isSubmitted = !!sub;
 
       // In closed/archived months, if onlySubmitted is requested, skip unentered tickets!

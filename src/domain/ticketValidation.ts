@@ -6,7 +6,12 @@ export interface TicketValidationResult {
   title?: string;
   message?: string;
   actualPattaNum?: number;
-  filledEntries?: Array<{ opName: string; workerId: number }>;
+  filledEntries?: Array<{
+    opName: string;
+    workerId: number;
+    workerNameSnapshot?: string;
+    rateSnapshot?: number;
+  }>;
   partyOwner?: PrintedPartyRecord;
 }
 
@@ -21,6 +26,29 @@ export interface TicketPartyStatus {
   alreadySubmittedTicket?: SubmittedTicketRecord;
   hasBlockingError: boolean;
   errorBannerText: string;
+}
+
+export function isDuplicateTicketRecord(
+  ticket: SubmittedTicketRecord,
+  partyOwner: PrintedPartyRecord | null | undefined,
+  modelId: string,
+  partyStr: string,
+  pattaNumbers: number[]
+): boolean {
+  const matchPatta = pattaNumbers.some(
+    (pNum) => pNum !== undefined && pNum !== null && ticket.pattaNumber === pNum
+  );
+  if (!matchPatta) return false;
+
+  if (partyOwner?.id && ticket.partyRecordId) {
+    return ticket.partyRecordId === partyOwner.id;
+  }
+  const matchParty = String(ticket.partyNumber || '').trim() === partyStr.trim();
+  const matchModel = ticket.modelId === modelId;
+  if (partyOwner && !partyOwner.isClosed) {
+    return !ticket.isClosed && matchModel && matchParty;
+  }
+  return matchModel && matchParty;
 }
 
 /**
@@ -104,19 +132,9 @@ export function getTicketPartyStatus(
     (partyOwner.archivedPattaNumbers.includes(actualPattaNum) || partyOwner.archivedPattaNumbers.includes(currentPattaNum))
   );
 
-  const alreadySubmittedTicket = (submittedTickets || []).find((s) => {
-    if (partyOwner?.id && s.partyRecordId) {
-      return s.partyRecordId === partyOwner.id && (s.pattaNumber === actualPattaNum || s.pattaNumber === currentPattaNum);
-    }
-    if (partyOwner && !partyOwner.isClosed) {
-      return !s.isClosed && s.modelId === model.id && String(s.partyNumber) === currentPartyStr && (s.pattaNumber === actualPattaNum || s.pattaNumber === currentPattaNum);
-    }
-    return (
-      s.modelId === model.id &&
-      String(s.partyNumber) === currentPartyStr &&
-      (s.pattaNumber === actualPattaNum || s.pattaNumber === currentPattaNum)
-    );
-  });
+  const alreadySubmittedTicket = (submittedTickets || []).find((s) =>
+    isDuplicateTicketRecord(s, partyOwner, model.id, currentPartyStr, [actualPattaNum, currentPattaNum])
+  );
 
   const hasBlockingError = isNonExistentParty || isWrongModelParty || isExceededPattaNum || isArchivedInPreviousPeriod || !!alreadySubmittedTicket;
 
@@ -163,7 +181,7 @@ export function validateTicketForSubmission(
   const isStrict = options?.requireTicketValidation !== false;
 
   const qty = Number(form.qty);
-  if (!qty || qty <= 0 || isNaN(qty)) {
+  if (!Number.isSafeInteger(qty) || qty <= 0) {
     return {
       isValid: false,
       errorType: 'warning',
@@ -172,11 +190,24 @@ export function validateTicketForSubmission(
     };
   }
 
-  const filledEntries: Array<{ opName: string; workerId: number }> = [];
+  const filledEntries: Array<{
+    opName: string;
+    workerId: number;
+    workerNameSnapshot?: string;
+    rateSnapshot?: number;
+  }> = [];
   for (const [opName, wVal] of Object.entries(form.entries)) {
     if (wVal !== '' && wVal !== undefined && wVal !== null) {
+      if (!model.operations.some((operation) => operation.name === opName)) {
+        return {
+          isValid: false,
+          errorType: 'error',
+          title: "Noto'g'ri operatsiya",
+          message: `«${opName}» ushbu model operatsiyalari ro'yxatida yo'q.`
+        };
+      }
       let wId = Number(wVal);
-      if (isNaN(wId) || wId <= 0) {
+      if (!Number.isSafeInteger(wId) || wId <= 0) {
         return {
           isValid: false,
           errorType: 'error',
@@ -184,8 +215,8 @@ export function validateTicketForSubmission(
           message: `Ishchi kodi noto'g'ri: "${wVal}"`
         };
       }
-      const workerExists = workers.some((w) => w.id === wId);
-      if (!workerExists) {
+      const matchedWorker = workers.find((w) => w.id === wId);
+      if (!matchedWorker) {
         return {
           isValid: false,
           errorType: 'error',
@@ -193,7 +224,13 @@ export function validateTicketForSubmission(
           message: `Ishchi topilmadi (hisob varaqda)! Kodi: ${wId}`
         };
       }
-      filledEntries.push({ opName, workerId: wId });
+      const matchedOp = model.operations.find((operation) => operation.name === opName);
+      filledEntries.push({
+        opName,
+        workerId: wId,
+        workerNameSnapshot: matchedWorker.name,
+        rateSnapshot: matchedOp?.rate !== undefined ? matchedOp.rate : 0
+      });
     }
   }
 
@@ -206,8 +243,18 @@ export function validateTicketForSubmission(
     };
   }
 
-  const currentPartyStr = String(form.party || '');
-  const currentPattaNum = parseInt(form.patta || '0', 10) || 0;
+  const currentPartyStr = String(form.party || '').trim();
+  const pattaText = String(form.patta || '').trim();
+  const currentPattaNum = /^\d+$/.test(pattaText) ? Number(pattaText) : 0;
+
+  if (!Number.isSafeInteger(currentPattaNum) || currentPattaNum <= 0) {
+    return {
+      isValid: false,
+      errorType: 'error',
+      title: 'Patta raqami xato!',
+      message: 'Patta raqamini musbat butun son sifatida kiriting.'
+    };
+  }
 
   if (!isStrict) {
     let alreadySubmitted: SubmittedTicketRecord | undefined;
@@ -237,8 +284,8 @@ export function validateTicketForSubmission(
   }
 
   const activeParties = (printedPartyHistory || []).filter((h) => !h.isClosed);
-  const partyOwner = activeParties.find((h) => String(h.partyNumber) === currentPartyStr)
-    || (printedPartyHistory || []).slice().reverse().find((h) => String(h.partyNumber) === currentPartyStr);
+  const partyOwner = activeParties.find((h) => String(h.partyNumber).trim() === currentPartyStr)
+    || (printedPartyHistory || []).slice().reverse().find((h) => String(h.partyNumber).trim() === currentPartyStr);
 
   if (!partyOwner) {
     return {
@@ -280,19 +327,9 @@ export function validateTicketForSubmission(
     };
   }
 
-  const alreadySubmitted = (submittedTickets || []).find((s) => {
-    if (partyOwner?.id && s.partyRecordId) {
-      return s.partyRecordId === partyOwner.id && s.pattaNumber === actualPattaNum;
-    }
-    if (partyOwner && !partyOwner.isClosed) {
-      return !s.isClosed && s.modelId === model.id && String(s.partyNumber) === currentPartyStr && s.pattaNumber === actualPattaNum;
-    }
-    return (
-      s.modelId === model.id &&
-      String(s.partyNumber) === currentPartyStr &&
-      s.pattaNumber === actualPattaNum
-    );
-  });
+  const alreadySubmitted = (submittedTickets || []).find((s) =>
+    isDuplicateTicketRecord(s, partyOwner, model.id, currentPartyStr, [actualPattaNum])
+  );
 
   if (alreadySubmitted) {
     return {

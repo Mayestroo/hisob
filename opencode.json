@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "openai/gpt-5.6-terra",
-  "small_model": "openai/gpt-5.4-mini-fast",
+  "small_model": "openai/gpt-5.4-mini",
   "agent": {
     "build": {
       "mode": "primary",
@@ -26,10 +26,10 @@
       }
     },
     "quick-scan": {
-      "description": "Loyihadagi fayllarni TEZ skanerlab, sintaksis xatolari, ishlatilmagan kod, importlar, oddiy kod-sifat va style muammolarini topadi. Katta hajmdagi fayllarni arzon va tez ko'rib chiqish uchun ishlatiladi. Har doim bir nechta faylni parallel tekshirishda ishlatiladi.",
+      "description": "Loyihadagi fayllarni tez va token-tejamkor skanerlaydi. Syntax, type, dead code, import, oddiy logic, security smell, performance smell va code-quality muammolarini topadi. Faqat konkret topilmalarni fayl:qator formatida qaytar. Uzun tushuntirish yozma. Bir nechta faylni bitta chaqiruvda tekshir.",
       "mode": "subagent",
-      "model": "openai/gpt-5.6-luna-fast",
-      "steps": 10,
+      "model": "openai/gpt-5.6-luna",
+      "steps": 6,
       "permission": {
         "edit": "deny",
         "bash": "ask",
@@ -37,21 +37,22 @@
       }
     },
     "deep-audit": {
-      "description": "Xavfsizlik zaifliklari (SQL Injection, XSS, auth muammolari), murakkab mantiqiy xatolar, race condition, memory leak, arxitektura darajasidagi muammolar kabi CHUQUR tahlil va yuqori aniqlik talab qiladigan holatlarni tekshiradi. quick-scan Critical yoki High darajali shubhali joy topganda, uni TASDIQLASH va to'liq tahlil qilish uchun albatta shu subagent chaqiriladi. BIR CHAQIRUVDA BIR NECHTA topilmani birga yuborish kerak, har birini alohida yubormang.",
+      "description": "Faqat quick-scan topgan Critical/High topilmalarni chuqur TASDIQLA. Butun loyihani qayta skaner qilma. Bir moduldagi barcha topilmalarni bitta chaqiruvda tekshir. False-positive bo'lsa aniq belgilab tashla. Faqat root-cause, impact va minimal fix qaytar.",
       "mode": "subagent",
-      "model": "openai/gpt-6-astra-fast",
+      "model": "openai/gpt-5.6-terra",
       "reasoningEffort": "medium",
-      "steps": 12,
+      "steps": 8,
       "permission": {
         "edit": "deny",
         "bash": "ask",
-        "webfetch": "allow"
+        "webfetch": "deny"
       }
     },
     "fixer": {
-      "description": "Audit orqali aniqlangan va foydalanuvchi tomonidan TASDIQLANGAN xatolarni real kodda tuzatadi. Faqat aniq tasdiqdan keyin ishlatiladi, o'z-o'zidan xato tuzatishga kirishmaydi.",
+      "description": "Faqat foydalanuvchi tasdiqlagan topilmalarni tuzat. Auditni qayta bajarma va aloqasiz refactor qilma. Minimal xavfsiz patch qil, mavjud funksionallikni saqla va tegishli test/checklarni ishga tushir.",
       "mode": "subagent",
       "model": "openai/gpt-5.6-terra",
+      "steps": 8,
       "permission": {
         "edit": "allow",
         "bash": "ask"

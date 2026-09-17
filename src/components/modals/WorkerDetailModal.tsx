@@ -61,7 +61,9 @@ export const WorkerDetailModal: React.FC = () => {
 
       for (const entry of ticket.entries || []) {
         if (entry.workerId === workerId) {
-          const rate = opRates?.get(entry.opName) || 0;
+          const rate = entry.rateSnapshot !== undefined && entry.rateSnapshot > 0 
+            ? entry.rateSnapshot 
+            : (opRates?.get(entry.opName) || 0);
           const qty = ticket.qty || 0;
           const summa = qty * rate;
 
@@ -150,6 +152,12 @@ export const WorkerDetailModal: React.FC = () => {
     };
   }, [filteredRecords]);
 
+  const toCsvCell = (value: unknown) => {
+    const text = String(value ?? '');
+    const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${safeText.replace(/"/g, '""')}"`;
+  };
+
   // Export to CSV
   const handleExportCSV = () => {
     if (!worker || filteredRecords.length === 0) return;
@@ -171,12 +179,12 @@ export const WorkerDetailModal: React.FC = () => {
     ]);
 
     const csvContent = '\uFEFF' + [
-      `"Ishchi: ${worker.name} (ID: ${worker.id})"`,
-      `"Jami Ish Soni: ${totals.totalQty} dona"`,
-      `"Jami Hisoblangan Summa: ${totals.totalSumma} so'm"`,
+      toCsvCell(`Ishchi: ${worker.name} (ID: ${worker.id})`),
+      toCsvCell(`Jami Ish Soni: ${totals.totalQty} dona`),
+      toCsvCell(`Jami Hisoblangan Summa: ${totals.totalSumma} so'm`),
       '',
       headers.join(','),
-      ...rows.map((row) => row.map((c) => `"${c}"`).join(','))
+      ...rows.map((row) => row.map(toCsvCell).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

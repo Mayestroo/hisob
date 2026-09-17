@@ -71,3 +71,7 @@ export const APP_VERSION =
 
 export const ENABLE_FIREBASE_SYNC =
   (env.VITE_ENABLE_FIREBASE_SYNC as string) === 'true' && IS_FIREBASE_CONFIGURED;
+
+// Anonymous Firebase users are permitted only for explicitly enabled local development.
+export const ENABLE_ANONYMOUS_FIREBASE_AUTH =
+  env.DEV && (env.VITE_ENABLE_ANONYMOUS_AUTH as string) === 'true';

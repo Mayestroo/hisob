@@ -65,7 +65,7 @@ export async function enqueueChange(
   companyId: string,
   path: string,
   value: any,
-  action: 'set' | 'update' | 'remove' = 'set'
+  action: 'set' | 'update' | 'remove' = 'update'
 ): Promise<number> {
   try {
     const db = await openNativeDB();
@@ -108,9 +108,9 @@ export async function enqueueChange(
 }
 
 /**
- * Navbatdagi barcha kutayotgan o'zgarishlarni olish
+ * Navbatdagi kutayotgan o'zgarishlarni olish (ixtiyoriy companyId filtri bilan)
  */
-export async function getPendingChanges(): Promise<PendingSyncChange[]> {
+export async function getPendingChanges(companyId?: string): Promise<PendingSyncChange[]> {
   try {
     const db = await openNativeDB();
     return new Promise((resolve, reject) => {
@@ -118,7 +118,10 @@ export async function getPendingChanges(): Promise<PendingSyncChange[]> {
       const store = tx.objectStore(STORE_NAME);
       const req = store.getAll();
       req.onsuccess = () => {
-        const results = (req.result as PendingSyncChange[]) || [];
+        let results = (req.result as PendingSyncChange[]) || [];
+        if (companyId) {
+          results = results.filter((r) => r.companyId === companyId);
+        }
         results.sort((a, b) => a.timestamp - b.timestamp);
         resolve(results);
       };

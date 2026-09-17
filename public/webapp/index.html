@@ -1007,9 +1007,11 @@
     const urlParams = new URLSearchParams(window.location.search);
     const paramComp = urlParams.get('comp') || urlParams.get('companyId');
     const tgUser = tg?.initDataUnsafe?.user;
-    const currentUserId = String(tgUser?.id || urlParams.get('tg_id') || '');
+    const hasTgAuth = !!tg?.initData && !!tgUser?.id;
+    const currentUserId = hasTgAuth ? String(tgUser.id) : '';
     const SUPER_ADMIN_ID = '1526974123';
-    const isSuperAdmin = currentUserId === SUPER_ADMIN_ID;
+    // Super-admin only granted if validated through Telegram WebApp context with valid initData
+    const isSuperAdmin = hasTgAuth && currentUserId === SUPER_ADMIN_ID;
 
     if (paramComp) {
       state.companyId = paramComp;
@@ -1023,6 +1025,16 @@
     // Greet user
     if (tgUser && tgUser.first_name) {
       document.getElementById('userGreeting').textContent = `Assalomu alaykum, ${tgUser.first_name}!`;
+    }
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     // Number formatter
@@ -1353,11 +1365,11 @@
       for (const w of filtered) {
         const netClass = w.sofFoyda < 0 ? 'worker-net-val negative' : 'worker-net-val';
         html += `
-          <div class="worker-card" onclick="openWorkerDetail(${w.workerId})">
+          <div class="worker-card" onclick="openWorkerDetail(${encodeURIComponent(w.workerId)})">
             <div class="worker-card-header">
               <div class="worker-identity">
-                <div class="worker-id-badge">#${w.workerId}</div>
-                <div class="worker-name">${w.workerName}</div>
+                <div class="worker-id-badge">#${escapeHtml(w.workerId)}</div>
+                <div class="worker-name">${escapeHtml(w.workerName)}</div>
               </div>
               <div class="worker-net-pay">
                 <div class="${netClass}">${formatMoney(w.sofFoyda)}</div>
@@ -1406,7 +1418,7 @@
           const opStat = mTotal?.opTotals[op.name] || { qty: 0, amount: 0 };
           opRows += `
             <tr>
-              <td>${op.name}</td>
+              <td>${escapeHtml(op.name)}</td>
               <td class="rate">${formatNumber(op.rate)} so'm</td>
               <td class="qty">${formatNumber(opStat.qty)} dona</td>
               <td class="sum">${formatNumber(opStat.amount)} so'm</td>
@@ -1417,10 +1429,10 @@
         html += `
           <div class="model-card">
             <div class="model-header">
-              <div class="model-name">${model.name}</div>
+              <div class="model-name">${escapeHtml(model.name)}</div>
               <div class="model-badges">
-                ${model.color ? `<span class="tag">🎨 ${model.color}</span>` : ''}
-                ${model.party ? `<span class="tag">📦 Partiya ${model.party}</span>` : ''}
+                ${model.color ? `<span class="tag">🎨 ${escapeHtml(model.color)}</span>` : ''}
+                ${model.party ? `<span class="tag">📦 Partiya ${escapeHtml(model.party)}</span>` : ''}
               </div>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 10px; background: rgba(56, 189, 248, 0.08); padding: 8px 12px; border-radius: 10px;">
@@ -1459,10 +1471,11 @@
         let entryRows = '';
         for (const e of t.entries || []) {
           const w = state.workers.find(x => x.id === e.workerId);
+          const wName = e.workerNameSnapshot || (w ? w.name : '');
           entryRows += `
             <div class="ticket-entry-row">
-              <span>${e.opName}</span>
-              <span class="ticket-entry-worker">#${e.workerId} ${w ? w.name : ''}</span>
+              <span>${escapeHtml(e.opName)}</span>
+              <span class="ticket-entry-worker">#${escapeHtml(e.workerId)} ${escapeHtml(wName)}</span>
             </div>
           `;
         }
@@ -1470,14 +1483,14 @@
         html += `
           <div class="ticket-card">
             <div class="ticket-header">
-              <div class="ticket-title">${t.modelId || 'Model'} &bull; Patta #${t.pattaNumber || 1}</div>
-              <div class="ticket-time">⏱️ ${t.submittedAt || ''}</div>
+              <div class="ticket-title">${escapeHtml(t.modelId || 'Model')} &bull; Patta #${escapeHtml(t.pattaNumber || 1)}</div>
+              <div class="ticket-time">⏱️ ${escapeHtml(t.submittedAt || '')}</div>
             </div>
             <div class="ticket-tags">
-              <span class="tag">Partiya: ${t.partyNumber || '-'}</span>
-              <span class="tag">Razmer: ${t.size || '-'}</span>
-              <span class="tag">Rang: ${t.color || '-'}</span>
-              <span class="tag" style="color: var(--success);">Soni: ${t.qty || 0} dona</span>
+              <span class="tag">Partiya: ${escapeHtml(t.partyNumber || '-')}</span>
+              <span class="tag">Razmer: ${escapeHtml(t.size || '-')}</span>
+              <span class="tag">Rang: ${escapeHtml(t.color || '-')}</span>
+              <span class="tag" style="color: var(--success);">Soni: ${formatNumber(t.qty || 0)} dona</span>
             </div>
             ${entryRows ? `<div class="ticket-entries">${entryRows}</div>` : ''}
           </div>
@@ -1498,13 +1511,13 @@
         html += `
           <div class="ticket-card">
             <div class="ticket-header">
-              <div class="ticket-title">Partiya #${p.partyNumber} — ${p.modelName || p.modelId}</div>
-              <div class="ticket-time">📅 ${p.printedAt || ''}</div>
+              <div class="ticket-title">Partiya #${escapeHtml(p.partyNumber)} — ${escapeHtml(p.modelName || p.modelId)}</div>
+              <div class="ticket-time">📅 ${escapeHtml(p.printedAt || '')}</div>
             </div>
             <div class="ticket-tags">
-              <span class="tag">Rang: ${p.color || '-'}</span>
+              <span class="tag">Rang: ${escapeHtml(p.color || '-')}</span>
               <span class="tag">Jami: ${formatNumber(p.ishSoni || p.totalIshSoni || 0)} dona</span>
-              <span class="tag">Pattalar soni: ${p.pattaCount || 0} ta</span>
+              <span class="tag">Pattalar soni: ${formatNumber(p.pattaCount || 0)} ta</span>
             </div>
           </div>
         `;
@@ -1532,9 +1545,9 @@
           <div class="worker-card" style="margin-bottom: 10px;">
             <div class="worker-card-header">
               <div>
-                <div style="font-size: 15px; font-weight: 800; color: var(--text-primary);">${p.name || key}</div>
+                <div style="font-size: 15px; font-weight: 800; color: var(--text-primary);">${escapeHtml(p.name || key)}</div>
                 <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
-                  📅 Arxivlangan: ${item.archivedAt ? new Date(item.archivedAt).toLocaleDateString('uz-UZ') : key}
+                  📅 Arxivlangan: ${escapeHtml(item.archivedAt ? new Date(item.archivedAt).toLocaleDateString('uz-UZ') : key)}
                 </div>
               </div>
               <div class="period-badge" style="background: rgba(139, 92, 246, 0.15); border-color: var(--purple); color: var(--purple);">
@@ -1586,7 +1599,7 @@
           for (const op of mb.operations || []) {
             opHtml += `
               <div style="display: flex; justify-content: space-between; font-size: 11px; padding: 3px 0; color: var(--text-secondary);">
-                <span>${op.opName} (${formatNumber(op.rate)} so'm)</span>
+                <span>${escapeHtml(op.opName)} (${formatNumber(op.rate)} so'm)</span>
                 <span><b>${formatNumber(op.qty)} dona</b> = <b style="color: var(--success);">${formatMoney(op.amount)}</b></span>
               </div>
             `;
@@ -1595,7 +1608,7 @@
           html += `
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px;">
               <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--accent);">
-                <span>👗 ${mb.modelName || mId}</span>
+                <span>👗 ${escapeHtml(mb.modelName || mId)}</span>
                 <span style="color: var(--success);">${formatMoney(mb.earnings)}</span>
               </div>
               <div style="border-top: 1px dashed var(--border); padding-top: 6px;">

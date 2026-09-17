@@ -63,11 +63,17 @@ export function calculateModelTotals(model: ModelConfig, workers: Worker[]): Mod
   const safeWorkers = Array.isArray(workers) ? workers : [];
   const hisobQuantities = model.hisobQuantities && typeof model.hisobQuantities === 'object' ? model.hisobQuantities : {};
 
+  const safeNumber = (val: any): number => {
+    const num = typeof val === 'number' ? val : Number(val);
+    return Number.isFinite(num) ? Math.max(0, num) : 0;
+  };
+
   // Initialize operations map
   for (const op of operations) {
+    const safeRate = safeNumber(op.rate);
     operationsTotalMap[op.name] = {
       opName: op.name,
-      rate: op.rate || 0,
+      rate: safeRate,
       totalQuantity: 0,
       totalAmount: 0
     };
@@ -79,7 +85,7 @@ export function calculateModelTotals(model: ModelConfig, workers: Worker[]): Mod
   // Pre-build operation rate map for O(1) lookups
   const opRateMap: Record<string, number> = {};
   for (const op of operations) {
-    opRateMap[op.name] = op.rate || 0;
+    opRateMap[op.name] = safeNumber(op.rate);
   }
 
   for (const worker of safeWorkers) {
@@ -98,7 +104,8 @@ export function calculateModelTotals(model: ModelConfig, workers: Worker[]): Mod
     let workerPieces = 0;
 
     for (const [opName, qty] of Object.entries(workerQtyMap)) {
-      const numQty = typeof qty === 'number' ? qty : Number(qty) || 0;
+      const rawQty = typeof qty === 'number' ? qty : Number(qty);
+      const numQty = Number.isFinite(rawQty) ? Math.max(0, rawQty) : 0;
       if (numQty > 0) {
         const rate = opRateMap[opName] || 0;
         const lineAmount = numQty * rate;
@@ -169,9 +176,14 @@ export function calculateMasterPayroll(models: ModelConfig[], workers: Worker[])
       workerUmumiy += earnings;
     }
 
-    const staj = Math.max(0, worker.staj || 0);
-    const avans = Math.max(0, worker.avans || 0);
-    const jarima = Math.max(0, worker.jarima || 0);
+    const safeNumber = (val: any): number => {
+      const num = typeof val === 'number' ? val : Number(val);
+      return Number.isFinite(num) ? Math.max(0, num) : 0;
+    };
+
+    const staj = safeNumber(worker.staj);
+    const avans = safeNumber(worker.avans);
+    const jarima = safeNumber(worker.jarima);
     const sofFoyda = workerUmumiy - avans - staj - jarima;
 
     workerSummaries.push({

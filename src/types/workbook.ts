@@ -84,7 +84,12 @@ export interface SubmittedTicketRecord {
   size?: string;
   color?: string;
   qty: number;
-  entries?: Array<{ opName: string; workerId: number }>;
+  entries?: Array<{
+    opName: string;
+    workerId: number;
+    workerNameSnapshot?: string;
+    rateSnapshot?: number;
+  }>;
   submittedAt: string;
 }
 

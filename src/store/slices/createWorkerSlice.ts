@@ -34,11 +34,11 @@ export const createWorkerSlice: StateCreator<WorkbookStore, [], [], WorkerSlice>
     } else {
       triggerDebouncedSave(() => {
         get().saveToDisk({ workers: updatedWorkers });
-      });
+      }, 1200, 'worker');
     }
   },
 
-  addWorker: (name: string) => {
+  addWorker: (name: string, initialData?: { staj?: number; avans?: number; jarima?: number; role?: string }) => {
     const state = get();
     const cleanName = cleanWorkerName(name);
     if (!cleanName) return;
@@ -50,13 +50,29 @@ export const createWorkerSlice: StateCreator<WorkbookStore, [], [], WorkerSlice>
       return;
     }
 
-    const maxId = state.workers.reduce((max, w) => Math.max(max, w.id), 0);
+    // Monotonic collision-free ID across active workers, deleted workers, and historical tickets
+    const usedIds = new Set<number>();
+    for (const w of state.workers) {
+      if (typeof w.id === 'number' && Number.isSafeInteger(w.id)) usedIds.add(w.id);
+    }
+    for (const dId of state.deletedWorkerIds || []) {
+      if (typeof dId === 'number' && Number.isSafeInteger(dId)) usedIds.add(dId);
+    }
+    for (const t of state.submittedTickets || []) {
+      for (const e of t.entries || []) {
+        if (typeof e.workerId === 'number' && Number.isSafeInteger(e.workerId)) usedIds.add(e.workerId);
+      }
+    }
+    const maxId = usedIds.size > 0 ? Math.max(...Array.from(usedIds)) : 0;
+    const newWorkerId = maxId + 1;
+
     const newWorker: Worker = {
-      id: maxId + 1,
+      id: newWorkerId,
       name: cleanName,
-      staj: 0,
-      avans: 0,
-      jarima: 0,
+      staj: Math.max(0, Number(initialData?.staj) || 0),
+      avans: Math.max(0, Number(initialData?.avans) || 0),
+      jarima: Math.max(0, Number(initialData?.jarima) || 0),
+      role: initialData?.role || undefined,
       updatedAt: Date.now()
     };
 

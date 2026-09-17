@@ -1,9 +1,16 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   base: './',
   plugins: [react()],
+  test: {
+    server: {
+      deps: {
+        inline: [/.*/]
+      }
+    }
+  },
   build: {
     rollupOptions: {
       output: {
@@ -29,7 +36,7 @@ export default defineConfig({
   server: {
     port: 3000,
     open: false,
-    host: true,
+    host: '127.0.0.1',
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

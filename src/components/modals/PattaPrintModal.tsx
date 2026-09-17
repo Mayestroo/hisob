@@ -57,7 +57,11 @@ export const PattaPrintModal: React.FC<PattaPrintModalProps> = ({
     // Global starting patta number across active party series (resets to 1 when party series is closed)
     const activeHistory = (printedPartyHistory || []).filter((h) => !h.isClosed);
     const globalPrevPattas = (activeHistory && activeHistory.length > 0)
-      ? (activeHistory[activeHistory.length - 1].cumulativePattaCount || activeHistory.reduce((sum, h) => sum + (h.pattaCount || 0), 0))
+      ? Math.max(
+          0,
+          ...activeHistory.map((h) => (typeof h.cumulativePattaCount === 'number' && Number.isFinite(h.cumulativePattaCount) ? h.cumulativePattaCount : 0)),
+          activeHistory.reduce((sum, h) => sum + (typeof h.pattaCount === 'number' && Number.isFinite(h.pattaCount) ? h.pattaCount : 0), 0)
+        )
       : 0;
 
     let currentPattaNum = globalPrevPattas + 1;

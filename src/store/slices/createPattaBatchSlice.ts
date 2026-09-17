@@ -86,7 +86,7 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
       };
       triggerDebouncedSave(() => {
         get().saveToDisk({ pattaBatchConfigs: updated });
-      });
+      }, 1200, 'patta_batch');
       return { pattaBatchConfigs: updated };
     });
   },
@@ -106,7 +106,7 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
       };
       triggerDebouncedSave(() => {
         get().saveToDisk({ pattaBatchConfigs: updated });
-      });
+      }, 1200, 'patta_batch');
       return { pattaBatchConfigs: updated };
     });
   },
@@ -306,6 +306,7 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
 
   deletePrintedPartyRecord: (id: string) => {
     const state = get();
+    const target = (state.printedPartyHistory || []).find((r) => r.id === id);
     const filtered = (state.printedPartyHistory || []).filter((r) => r.id !== id);
 
     // Calculate nextPartyNumber as lowest unused positive integer among all printed parties
@@ -320,7 +321,11 @@ export const createPattaBatchSlice: StateCreator<WorkbookStore, [], [], PattaBat
     }
     const resolvedNextParty = Math.max(state.nextPartyNumber || 1, nextUnused);
 
-    const updatedDeletedPartyIds = Array.from(new Set([...(state.deletedPartyIds || []), id]));
+    const tombstoneKeys = [id];
+    if (target) {
+      tombstoneKeys.push(`${target.modelId}#${target.partyNumber}`);
+    }
+    const updatedDeletedPartyIds = Array.from(new Set([...(state.deletedPartyIds || []), ...tombstoneKeys]));
 
     set({
       printedPartyHistory: filtered,

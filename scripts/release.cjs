@@ -1,16 +1,24 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const https = require('https');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PKG_PATH = path.join(ROOT_DIR, 'package.json');
 const ENV_LOCAL_PATH = path.join(ROOT_DIR, '.env.local');
 const DIST_DIR = path.join(ROOT_DIR, 'dist-build');
+const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+
+function run(command, args, options = {}) {
+  return execFileSync(command, args, { cwd: ROOT_DIR, stdio: 'inherit', ...options });
+}
 
 // 1. Calculate New Version
 function bumpVersion(currentVer, type = 'patch') {
   const clean = currentVer.replace(/^v/i, '').trim();
+  if (!SEMVER_RE.test(clean)) {
+    throw new Error(`Invalid current version: ${currentVer}`);
+  }
   const parts = clean.split('.').map((p) => parseInt(p, 10) || 0);
   while (parts.length < 3) parts.push(0);
 
@@ -25,7 +33,7 @@ function bumpVersion(currentVer, type = 'patch') {
     patch = 0;
   } else if (type === 'patch') {
     patch += 1;
-  } else if (/^\d+\.\d+\.\d+/.test(type)) {
+  } else if (SEMVER_RE.test(type.replace(/^v/i, '').trim())) {
     return type.replace(/^v/i, '').trim();
   } else {
     patch += 1;
@@ -120,40 +128,31 @@ async function main() {
 
   // Step 2: Build frontend
   console.log(`\n🔨 [2/5] Frontend yig'ilmoqda (tsc && vite build)...`);
-  execSync('npm run build', { stdio: 'inherit', cwd: ROOT_DIR });
+  run('npm', ['run', 'build']);
   console.log(`   ✓ Frontend muvaffaqiyatli yig'ildi.`);
 
   // Step 3: Build Electron installer
   console.log(`\n📦 [3/5] Windows Installer (.exe) yaratilmoqda...`);
-  execSync('npx electron-builder --win nsis', { stdio: 'inherit', cwd: ROOT_DIR });
+  run('npx', ['electron-builder', '--win', 'nsis']);
 
   // Locate the created .exe file
-  const files = fs.existsSync(DIST_DIR) ? fs.readdirSync(DIST_DIR) : [];
-  const exeFile = files.find((f) => f.includes(newVersion) && f.endsWith('.exe')) || files.find((f) => f.endsWith('.exe'));
+  const exeFile = `Novda-hisob-kitob-Setup-${newVersion}-win10-11-x64.exe`;
+  const exePath = path.join(DIST_DIR, exeFile);
 
-  if (!exeFile) {
-    console.error(`❌ Xatolik: dist-build papkasida .exe fayl topilmadi!`);
-    process.exit(1);
+  if (!fs.existsSync(exePath)) {
+    throw new Error(`Expected installer was not created: ${exePath}`);
   }
 
-  const exePath = path.join(DIST_DIR, exeFile);
   console.log(`   ✓ Installer tayyor: ${exeFile}`);
 
   // Step 4: Git tag and push
   console.log(`\n🏷️ [4/5] Git commit va tag yaratilmoqda...`);
-  try {
-    execSync(`git add package.json .env.local`, { cwd: ROOT_DIR });
-    execSync(`git commit -m "chore(release): bump version to v${newVersion}"`, { cwd: ROOT_DIR });
-  } catch {}
-
-  try {
-    execSync(`git tag -a v${newVersion} -m "Release v${newVersion}"`, { cwd: ROOT_DIR });
-    console.log(`   ✓ Git tag v${newVersion} yaratildi.`);
-    console.log(`   Push qilinmoqda (origin master --tags)...`);
-    execSync(`git push origin master --tags`, { stdio: 'inherit', cwd: ROOT_DIR });
-  } catch (err) {
-    console.warn(`   ⚠️ Git push ogohlantirishi:`, err.message);
-  }
+  run('git', ['add', 'package.json']);
+  run('git', ['commit', '-m', `chore(release): bump version to v${newVersion}`]);
+  run('git', ['tag', '-a', `v${newVersion}`, '-m', `Release v${newVersion}`]);
+  console.log(`   ✓ Git tag v${newVersion} yaratildi.`);
+  console.log(`   Push qilinmoqda (origin master --tags)...`);
+  run('git', ['push', 'origin', 'master', '--tags']);
 
   // Step 5: Upload to GitHub Releases
   console.log(`\n☁️ [5/5] GitHub Releasesga yuklanmoqda...`);
@@ -161,18 +160,12 @@ async function main() {
   const repo = 'Mayestroo/hisob-releases';
 
   try {
-    execSync(`gh release create v${newVersion} "${exePath}" --repo ${repo} --target main --title "v${newVersion}" --notes "${releaseNotes}"`, {
-      stdio: 'inherit',
-      cwd: ROOT_DIR
-    });
+    run('gh', ['release', 'create', `v${newVersion}`, exePath, '--repo', repo, '--target', 'main', '--title', `v${newVersion}`, '--notes', releaseNotes]);
     console.log(`   ✓ GitHub Releasesga muvaffaqiyatli yuklandi!`);
   } catch (err) {
     console.log(`   Mavjud release ga yuklashga urinilmoqda (--clobber)...`);
     try {
-      execSync(`gh release upload v${newVersion} "${exePath}" --repo ${repo} --clobber`, {
-        stdio: 'inherit',
-        cwd: ROOT_DIR
-      });
+      run('gh', ['release', 'upload', `v${newVersion}`, exePath, '--repo', repo, '--clobber']);
       console.log(`   ✓ Fayl GitHub Releasesga yuklandi!`);
     } catch (uploadErr) {
       console.error(`❌ GitHub Releasesga yuklashda xatolik:`, uploadErr.message);

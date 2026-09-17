@@ -4,7 +4,7 @@
  */
 
 import { ref, onValue, set, update, get } from 'firebase/database';
-import { getFirebaseDB, IS_FIREBASE_CONFIGURED } from '../config/firebase';
+import { ENABLE_FIREBASE_SYNC, getFirebaseDB, IS_FIREBASE_CONFIGURED } from '../config/firebase';
 import {
   enqueueChange,
   getPendingChanges,
@@ -24,7 +24,7 @@ export function subscribeToCompany(
   onError?: (err: Error) => void
 ): () => void {
   const db = getFirebaseDB();
-  if (!IS_FIREBASE_CONFIGURED || !db) {
+  if (!ENABLE_FIREBASE_SYNC || !IS_FIREBASE_CONFIGURED || !db) {
     return () => {};
   }
 
@@ -82,10 +82,13 @@ export async function syncWrite(
   const fullPath = `companies/${companyId}/${subPath}`;
   const sanitized = cleanForFirebase(data);
 
-  if (IS_FIREBASE_CONFIGURED && db && navigator.onLine) {
+  // Safety guard: Never set() on syncData root to prevent wiping concurrent multi-PC writes!
+  const effectiveMode = subPath === 'syncData' ? 'update' : mode;
+
+  if (ENABLE_FIREBASE_SYNC && IS_FIREBASE_CONFIGURED && db && navigator.onLine) {
     try {
       const targetRef = ref(db, fullPath);
-      if (mode === 'set') {
+      if (effectiveMode === 'set') {
         await set(targetRef, sanitized);
       } else {
         await update(targetRef, sanitized);
@@ -96,30 +99,32 @@ export async function syncWrite(
     }
   }
 
+  if (!ENABLE_FIREBASE_SYNC) return false;
+
   // Oflayn navbatga saqlash
-  await enqueueChange(companyId, fullPath, sanitized, mode);
+  await enqueueChange(companyId, fullPath, sanitized, effectiveMode);
   return false;
 }
 
 /**
- * Oflayn navbatdagi barcha o'zgarishlarni Firebase'ga yuklash
+ * Oflayn navbatdagi barcha o'zgarishlarni Firebase'ga yuklash (ixtiyoriy companyId filtri bilan)
  */
-export async function flushOfflineQueue(): Promise<{ sent: number; remaining: number }> {
+export async function flushOfflineQueue(companyId?: string): Promise<{ sent: number; remaining: number }> {
   if (isFlushing || !navigator.onLine) return { sent: 0, remaining: await getPendingCount() };
 
   const db = getFirebaseDB();
-  if (!IS_FIREBASE_CONFIGURED || !db) return { sent: 0, remaining: 0 };
+  if (!ENABLE_FIREBASE_SYNC || !IS_FIREBASE_CONFIGURED || !db) return { sent: 0, remaining: 0 };
 
   isFlushing = true;
   let sent = 0;
 
   try {
-    const changes = await getPendingChanges();
+    const changes = await getPendingChanges(companyId);
     for (const item of changes) {
       try {
         const itemRef = ref(db, item.path);
         const cleanVal = cleanForFirebase(item.value);
-        if (item.action === 'set') {
+        if (item.action === 'set' && !item.path.endsWith('/syncData')) {
           await set(itemRef, cleanVal);
         } else {
           await update(itemRef, cleanVal);
@@ -182,7 +187,7 @@ export function initAutoSyncQueue(): () => void {
  * Korxona bulutidagi so'nggi syncData holatini yuklab olish (Disaster Recovery)
  */
 export async function fetchCompanyCloudData(companyId: string): Promise<any | null> {
-  if (!companyId || companyId === 'unassigned') {
+  if (!ENABLE_FIREBASE_SYNC || !companyId || companyId === 'unassigned') {
     return null;
   }
 
@@ -241,7 +246,7 @@ export async function saveCompanyArchive(
  * Korxonaning barcha yopilgan oylik arxivlarini bulutdan olish
  */
 export async function fetchCompanyArchives(companyId: string): Promise<Record<string, any> | null> {
-  if (!companyId || companyId === 'unassigned') {
+  if (!ENABLE_FIREBASE_SYNC || !companyId || companyId === 'unassigned') {
     return null;
   }
 
@@ -279,7 +284,7 @@ export async function fetchCompanyArchiveFile(
   companyId: string,
   archiveKey: string
 ): Promise<any | null> {
-  if (!companyId || companyId === 'unassigned' || !archiveKey) {
+  if (!ENABLE_FIREBASE_SYNC || !companyId || companyId === 'unassigned' || !archiveKey) {
     return null;
   }
 

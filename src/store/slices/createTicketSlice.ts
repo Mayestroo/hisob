@@ -28,7 +28,7 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
     set({ ticketForms: updatedForms });
     triggerDebouncedSave(() => {
       get().saveToDisk({ ticketForms: updatedForms }, { skipCloudSync: true });
-    });
+    }, 1200, 'ticket_form');
   },
 
   setTicketWorker: (modelId: string, opName: string, workerId: string | number) => {
@@ -55,7 +55,7 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
     set({ ticketForms: updatedForms });
     triggerDebouncedSave(() => {
       get().saveToDisk({ ticketForms: updatedForms }, { skipCloudSync: true });
-    });
+    }, 1200, 'ticket_form');
   },
 
   clearTicketForm: (modelId: string) => {
@@ -73,7 +73,7 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
     set({ ticketForms: updatedForms });
     triggerDebouncedSave(() => {
       get().saveToDisk({ ticketForms: updatedForms }, { skipCloudSync: true });
-    });
+    }, 1200, 'ticket_form');
   },
 
   jonatish: async (modelId: string): Promise<boolean> => {
@@ -208,13 +208,15 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
 
     // Log transaction to audit file
     try {
-      fetch('/api/log-transaction', {
+      await fetch('/api/log-transaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ modelId, qty, entries: filledEntries })
+      }).catch((e) => {
+        console.warn('Audit transaction log failed:', e);
       });
     } catch (e) {
-      console.warn(e);
+      console.warn('Audit transaction log failed:', e);
     }
 
     state.addNotification(

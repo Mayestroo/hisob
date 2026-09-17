@@ -190,9 +190,12 @@ export const createModelSlice: StateCreator<WorkbookStore, [], [], ModelSlice> =
       currentActive = `${cleanName}-hisob`;
     }
 
-    const updatedDeletedModelIds = (state.deletedModelIds || []).filter(
+    const filteredDeleted = (state.deletedModelIds || []).filter(
       (id) => id.toLowerCase() !== cleanName.toLowerCase()
     );
+    const updatedDeletedModelIds = oldId.toLowerCase() !== cleanName.toLowerCase()
+      ? Array.from(new Set([...filteredDeleted, oldId]))
+      : filteredDeleted;
 
     set({
       models: updatedModels,
@@ -349,7 +352,7 @@ export const createModelSlice: StateCreator<WorkbookStore, [], [], ModelSlice> =
     set({ models: updatedModels });
     triggerDebouncedSave(() => {
       get().saveToDisk({ models: updatedModels });
-    });
+    }, 1200, 'model');
   },
 
   updateOperationName: (modelId: string, oldOpName: string, newOpName: string) => {
@@ -424,7 +427,7 @@ export const createModelSlice: StateCreator<WorkbookStore, [], [], ModelSlice> =
     set({ models: updatedModels });
     triggerDebouncedSave(() => {
       get().saveToDisk({ models: updatedModels }, { skipReconcile: true });
-    });
+    }, 1200, 'model');
   },
 
   reorderOperations: (modelId: string, newOrder: string[]) => {
@@ -473,6 +476,6 @@ export const createModelSlice: StateCreator<WorkbookStore, [], [], ModelSlice> =
     set({ models: updatedModels });
     triggerDebouncedSave(() => {
       get().saveToDisk({ models: updatedModels });
-    });
+    }, 1200, 'model');
   }
 });

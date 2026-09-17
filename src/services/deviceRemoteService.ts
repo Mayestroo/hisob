@@ -96,14 +96,23 @@ export function initDeviceRemoteListener(machineId: string): () => void {
           try {
             console.log(`[RemoteControl] Masofaviy rol/kalit yangilanishi: ${targetRole.toUpperCase()}`);
 
+            let activationOk = true;
             if (currentKey !== targetKey && eAPI?.activateLicense) {
               const res = await eAPI.activateLicense(targetKey);
               if (!res?.success) {
                 console.warn('[RemoteControl] Masofaviy litsenziya kaliti qabul qilinmadi:', res?.error);
+                activationOk = false;
               }
             }
 
             await useWorkbookStore.getState().checkLicense();
+            const check = useWorkbookStore.getState().licenseStatus;
+            // Fail-closed authorization: only elevate role if license is active and verified
+            const verifiedRole = String(check?.role || '').toLowerCase();
+            if (!activationOk || !check?.isActivated || (verifiedRole && verifiedRole !== targetRole)) {
+              console.warn('[RemoteControl] Rol o\'zgartirish rad etildi: Litsenziya tasdiqlanmadi yoki rol mos kelmadi');
+              return;
+            }
 
             const roleChanged = currentRole && currentRole !== targetRole;
 

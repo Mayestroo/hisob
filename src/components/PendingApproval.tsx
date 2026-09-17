@@ -43,6 +43,13 @@ export const PendingApproval: React.FC<PendingApprovalProps> = ({ isBlocked: pro
         await checkRemoteDeviceStatus(targetMachId);
       }
       await useWorkbookStore.getState().checkLicense();
+    } catch (err: any) {
+      console.error('Failed to check device status:', err);
+      useWorkbookStore.getState().addNotification(
+        'error',
+        'Status tekshirishda xatolik',
+        err?.message || 'Tarmoqqa yoki serverga ulanib bo‘lmadi'
+      );
     } finally {
       setTimeout(() => setChecking(false), 800);
     }

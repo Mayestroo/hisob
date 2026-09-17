@@ -26,14 +26,7 @@ export const WorkerManagerModal: React.FC = () => {
     if (!newWorkerName.trim()) return;
     const clean = newWorkerStaj.replace(/\D/g, '');
     const stajNum = clean ? parseInt(clean, 10) : 0;
-    addWorker(newWorkerName.trim());
-    if (stajNum > 0) {
-      const latest = useWorkbookStore.getState().workers;
-      const added = latest.find((w) => w.name.toLowerCase() === newWorkerName.trim().toLowerCase());
-      if (added) {
-        await updateWorker(added.id, { staj: stajNum }, { immediate: true });
-      }
-    }
+    addWorker(newWorkerName.trim(), { staj: stajNum });
     setNewWorkerName('');
     setNewWorkerStaj('');
   };

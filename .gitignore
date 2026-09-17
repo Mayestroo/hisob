@@ -41,6 +41,9 @@ coverage/
 .parcel-cache/
 .turbo/
 .vite/
+__pycache__/
+*.py[cod]
+*$py.class
 
 # Misc
 *.local
@@ -48,8 +51,13 @@ coverage/
 *.seed
 *.pid.lock
 scratch/
+telegram_admin_config.json
 telegram_devices_db.json
 telegram_companies_db.json
+render-bot/telegram_admin_config.json
+render-bot/telegram_devices_db.json
+render-bot/telegram_companies_db.json
+worker-bot/worker_bindings.json
 *.xlsx
 *.xlsm
 data/*.json
@@ -57,3 +65,4 @@ data/*.xlsx
 data/*.txt
 data/backups/
 data/archives/
+

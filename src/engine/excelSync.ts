@@ -2,8 +2,21 @@ import * as XLSX from 'xlsx';
 import { Worker, ModelConfig } from '../types/workbook';
 import { calculateModelTotals, calculateMasterPayroll } from './formulaEngine';
 
+function makeSheetName(name: string, usedNames: Set<string>): string {
+  const baseName = (name || 'Sheet').replace(/[\\/:?*\[\]]/g, '_').slice(0, 31) || 'Sheet';
+  let sheetName = baseName;
+  let suffix = 1;
+  while (usedNames.has(sheetName.toLowerCase())) {
+    const suffixText = ` (${suffix++})`;
+    sheetName = `${baseName.slice(0, 31 - suffixText.length)}${suffixText}`;
+  }
+  usedNames.add(sheetName.toLowerCase());
+  return sheetName;
+}
+
 export function exportWorkbookToExcel(models: ModelConfig[], workers: Worker[], customFilename?: string) {
   const wb = XLSX.utils.book_new();
+  const usedSheetNames = new Set<string>();
 
   // 1. MASTER PAYROLL SHEET (Umumiy) - ALWAYS FIRST SHEET!
   const payroll = calculateMasterPayroll(models, workers);
@@ -52,7 +65,7 @@ export function exportWorkbookToExcel(models: ModelConfig[], workers: Worker[], 
   umumiyData.push(uTotalRow);
 
   const wsUmumiy = XLSX.utils.aoa_to_sheet(umumiyData);
-  XLSX.utils.book_append_sheet(wb, wsUmumiy, 'Umumiy');
+  XLSX.utils.book_append_sheet(wb, wsUmumiy, makeSheetName('Umumiy', usedSheetNames));
 
   // 2. Export Patta and Hisob sheets
   for (const model of models) {
@@ -68,7 +81,7 @@ export function exportWorkbookToExcel(models: ModelConfig[], workers: Worker[], 
     });
 
     const wsPatta = XLSX.utils.aoa_to_sheet(pattaData);
-    XLSX.utils.book_append_sheet(wb, wsPatta, model.name);
+    XLSX.utils.book_append_sheet(wb, wsPatta, makeSheetName(model.name, usedSheetNames));
 
     // B. Hisob Sheet
     const hisobData: any[][] = [];
@@ -112,7 +125,7 @@ export function exportWorkbookToExcel(models: ModelConfig[], workers: Worker[], 
     hisobData.push(totalRow);
 
     const wsHisob = XLSX.utils.aoa_to_sheet(hisobData);
-    XLSX.utils.book_append_sheet(wb, wsHisob, model.hisobSheetName);
+    XLSX.utils.book_append_sheet(wb, wsHisob, makeSheetName(model.hisobSheetName, usedSheetNames));
   }
 
   // Trigger browser download

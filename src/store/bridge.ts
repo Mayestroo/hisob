@@ -143,6 +143,14 @@ export function useStoreBridge() {
             continue;
           }
 
+          // Check if active company changed while in the queue
+          const currentLicComp = useWorkbookStore.getState().licenseStatus?.companyId;
+          if (targetCompId !== activeCompanyId || (currentLicComp && targetCompId !== currentLicComp)) {
+            console.warn(`[MultiSync] Kompaniya o'zgargan (${targetCompId} !== ${currentLicComp}), navbat tozalandi.`);
+            syncQueue.length = 0;
+            break;
+          }
+
           console.log(`[MultiSync] Korxona [${targetCompId}] bulutidan ma'lumotlar qabul qilindi (Manba: ${syncData.updatedBy || 'boshqa'})!`);
 
           try {
@@ -201,7 +209,11 @@ export function useStoreBridge() {
         unsubCompany();
         unsubCompany = null;
       }
+      // Reset queue on company switch to prevent cross-company data leakage
+      syncQueue.length = 0;
+
       if (!targetCompId || targetCompId === 'unassigned') {
+        activeCompanyId = null;
         console.log('[MultiSync] Korxona hali biriktirilmagan, sinxronizatsiya kutilmoqda.');
         return;
       }
@@ -236,7 +248,11 @@ export function useStoreBridge() {
 
     return () => {
       cleanupSync();
-      if (unsubCompany) unsubCompany();
+      if (unsubCompany) {
+        unsubCompany();
+        unsubCompany = null;
+      }
+      syncQueue.length = 0;
       unsubLicense();
       if (cleanupRemote) cleanupRemote();
     };

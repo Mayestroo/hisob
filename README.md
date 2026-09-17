@@ -43,8 +43,8 @@ cp .env.example .env.local
   ```bash
   npm run dev
   ```
-  Vite brauzerda: `http://localhost:3000`  
-  API server: `http://localhost:3001`
+  Vite brauzerda: `http://127.0.0.1:3000`  
+  API server: `http://127.0.0.1:3001`
 
 - **Desktop (Electron) ilovasini ochish:**
   ```bash
@@ -79,9 +79,11 @@ npx tsc --noEmit
 
 Windows 10/11 uchun to'liq avtonom o'rnatuvchi paketni yaratish:
 ```bash
+npm run dist:local
+# yoki
 npm run dist
 ```
-Natijaviy fayl: `dist-build/Novda-hisob-kitob-Setup-1.5.9-win10-11-x64.exe`
+Natijaviy fayl: `dist-build/Novda-hisob-kitob-Setup-1.6.0-win10-11-x64.exe`
 
 ---
 

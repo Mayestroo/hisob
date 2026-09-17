@@ -47,14 +47,12 @@ function getOrCreateDeviceId(): string {
   return id;
 }
 
-const isBrowser = typeof window !== 'undefined' && !(window as any).electronAPI;
-
 export const useAuthStore = create<AuthState>((set, get) => ({
-  status: isBrowser ? 'active' : 'unauthenticated',
+  status: 'unauthenticated',
   user: null,
-  permissions: isBrowser ? applyRolePermissions('admin') : [],
-  role: isBrowser ? 'admin' : null,
-  companyId: isBrowser ? 'comp_novda' : null,
+  permissions: [],
+  role: null,
+  companyId: null,
   deviceId: typeof window !== 'undefined' ? getOrCreateDeviceId() : null,
 
   setAuth: (auth) => set((prev) => ({ ...prev, ...auth })),

@@ -5,7 +5,7 @@ const os = require('os');
 const https = require('https');
 const { execSync } = require('child_process');
 
-const MASTER_SECRET = 'NOVDA_2026_MASTER_SECRET_SECURITY_SALT_KEY_HISOB_PROD';
+const MASTER_SECRET = process.env.NOVDA_LICENSE_SECRET || 'NOVDA_2026_MASTER_SECRET_SECURITY_SALT_KEY_HISOB_PROD';
 const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000; // 1 Day (24 Hours)
 
 // Cloud License & Telemetry Hub (Supports Firebase / Custom Cloud Sync)
@@ -454,7 +454,7 @@ function syncWithCloud(userDataDir, currentStatus, force = false) {
                 licObj.key = resp.licenseKey;
                 licObj.role = check.role || resp.role;
                 licObj.activatedAt = licObj.activatedAt || new Date().toISOString();
-                licObj.isLifetime = check.isLifetime || true;
+                licObj.isLifetime = Boolean(check.isLifetime);
                 changed = true;
                 const trialPath = getTrialFilePath(userDataDir);
                 if (fs.existsSync(trialPath)) {

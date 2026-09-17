@@ -264,7 +264,7 @@ export const LicenseActivationModal: React.FC = () => {
                   {licenseStatus.role || 'admin'}
                 </span>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Kalit: {licenseStatus.licenseKey || 'Faol'}
+                  Litsenziya faol
                 </div>
               </div>
             </div>

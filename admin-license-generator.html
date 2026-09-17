@@ -87,6 +87,7 @@
       letter-spacing: -0.02em;
       background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
@@ -586,7 +587,17 @@
   </div>
 
   <script>
-    const MASTER_SECRET = 'NOVDA_2026_MASTER_SECRET_SECURITY_SALT_KEY_HISOB_PROD';
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const MASTER_SECRET = localStorage.getItem('novda_master_secret') || 'NOVDA_2026_MASTER_SECRET_SECURITY_SALT_KEY_HISOB_PROD';
     let selectedExpiry = 'LIFETIME';
 
     // Cloud URL handling
@@ -795,17 +806,17 @@
 
         html += `
           <tr>
-            <td><strong class="mono" style="color: #38bdf8;">${dev.machineId || 'N/A'}</strong></td>
-            <td>${dev.hostname || 'Kompyuter'} <span style="color:#64748b; font-size:11px;">(${dev.osUser || 'user'})</span></td>
+            <td><strong class="mono" style="color: #38bdf8;">${escapeHtml(dev.machineId || 'N/A')}</strong></td>
+            <td>${escapeHtml(dev.hostname || 'Kompyuter')} <span style="color:#64748b; font-size:11px;">(${escapeHtml(dev.osUser || 'user')})</span></td>
             <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-            <td><code style="font-size: 11px;">${dev.licenseKey || 'Yo\'q'}</code></td>
-            <td style="font-size: 12px; color: #94a3b8;">${timeStr}</td>
+            <td><code style="font-size: 11px;">${escapeHtml(dev.licenseKey || 'Yo\'q')}</code></td>
+            <td style="font-size: 12px; color: #94a3b8;">${escapeHtml(timeStr)}</td>
             <td style="text-align: right; white-space: nowrap;">
-              <button class="btn-action btn-gen" onclick="quickGenKey('${dev.machineId}')" title="Kalit yaratish">🔑 Kalit</button>
+              <button class="btn-action btn-gen" onclick="quickGenKey('${encodeURIComponent(dev.machineId || '')}')" title="Kalit yaratish">🔑 Kalit</button>
               ${isBlocked ? `
-                <button class="btn-action btn-unblock" onclick="toggleBlock('${dev.machineId}', false)">🔓 Ochish</button>
+                <button class="btn-action btn-unblock" onclick="toggleBlock('${encodeURIComponent(dev.machineId || '')}', false)">🔓 Ochish</button>
               ` : `
-                <button class="btn-action btn-block" onclick="toggleBlock('${dev.machineId}', true)">⛔ Bloklash</button>
+                <button class="btn-action btn-block" onclick="toggleBlock('${encodeURIComponent(dev.machineId || '')}', true)">⛔ Bloklash</button>
               `}
             </td>
           </tr>

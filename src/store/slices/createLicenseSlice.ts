@@ -1,20 +1,8 @@
 import { StateCreator } from 'zustand';
 import { WorkbookStore, LicenseSlice } from '../types';
 
-const isBrowser = typeof window !== 'undefined' && !(window as any).electronAPI;
-
 export const createLicenseSlice: StateCreator<WorkbookStore, [], [], LicenseSlice> = (set, get) => ({
-  licenseStatus: isBrowser
-    ? {
-        isActivated: true,
-        machineId: 'NOVDA-WEB-DEVELOPER',
-        isLifetime: true,
-        companyId: 'comp_novda',
-        companyName: 'Novda',
-        role: 'admin',
-        message: 'Veb rejimida faol'
-      }
-    : null,
+  licenseStatus: null,
   theme: (typeof window !== 'undefined' && (localStorage.getItem('novda_theme') as 'light' | 'dark')) || 'light',
 
   toggleTheme: () => {
@@ -42,19 +30,6 @@ export const createLicenseSlice: StateCreator<WorkbookStore, [], [], LicenseSlic
       } catch (err) {
         console.error('License check error:', err);
       }
-    } else {
-      // In web browser dev mode, mock lifetime admin license
-      set({
-        licenseStatus: {
-          isActivated: true,
-          machineId: 'NOVDA-WEB-DEVELOPER',
-          isLifetime: true,
-          companyId: 'comp_novda',
-          companyName: 'Novda',
-          role: 'admin',
-          message: 'Veb rejimida faol'
-        }
-      });
     }
   },
 

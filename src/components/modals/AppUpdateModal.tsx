@@ -40,15 +40,21 @@ export const AppUpdateModal: React.FC = () => {
     setIsDownloading(true);
     setProgress({ percent: 0, downloadedBytes: 0, totalBytes: 0 });
 
-    const res = await startDownloadAndInstall(availableUpdate, (p) => {
-      setProgress(p);
-    });
+    try {
+      const res = await startDownloadAndInstall(availableUpdate, (p) => {
+        setProgress(p);
+      });
 
-    if (res.success) {
-      setIsDone(true);
-      addNotification('success', 'Yangilanish', 'Dastur qayta ishga tushirilmoqda...');
-    } else {
-      setError(res.error || 'Yuklab olishda xatolik yuz berdi');
+      if (res.success) {
+        setIsDone(true);
+        addNotification('success', 'Yangilanish', 'Dastur qayta ishga tushirilmoqda...');
+      } else {
+        setError(res.error || 'Yuklab olishda xatolik yuz berdi');
+        setIsDownloading(false);
+      }
+    } catch (err: any) {
+      console.error('Update download/install error:', err);
+      setError(err?.message || 'Yuklab olishda kutilmagan xatolik yuz berdi');
       setIsDownloading(false);
     }
   };

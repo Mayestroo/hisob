@@ -13,27 +13,25 @@ import {
   User,
   UserCredential
 } from 'firebase/auth';
-import { getFirebaseAuth, IS_FIREBASE_CONFIGURED } from '../config/firebase';
+import { ENABLE_ANONYMOUS_FIREBASE_AUTH, getFirebaseAuth, IS_FIREBASE_CONFIGURED } from '../config/firebase';
 
 export function isAuthAvailable(): boolean {
   return IS_FIREBASE_CONFIGURED && getFirebaseAuth() !== null;
 }
 
-/**
- * Avtomatik xavfsiz anonim autentifikatsiya
- * Ilova ochilganda fonda xavfsiz token oladi va Firebase Rules ruxsat beradi
- */
 export async function ensureAnonymousAuth(): Promise<User | null> {
+  if (!ENABLE_ANONYMOUS_FIREBASE_AUTH) return null;
+
   const auth = getFirebaseAuth();
   if (!auth) return null;
   if (auth.currentUser) return auth.currentUser;
 
   try {
     const cred = await signInAnonymously(auth);
-    console.log('[FirebaseAuth] Xavfsiz anonim sessiya faollashdi:', cred.user.uid);
+    console.log('[FirebaseAuth] Development anonymous session enabled:', cred.user.uid);
     return cred.user;
   } catch (err) {
-    console.warn('[FirebaseAuth] Anonim autentifikatsiya xatosi:', err);
+    console.warn('[FirebaseAuth] Development anonymous sign-in failed:', err);
     return null;
   }
 }

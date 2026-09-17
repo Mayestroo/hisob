@@ -66,6 +66,40 @@ describe('TicketValidation — Patta Entry and Duplicate Prevention', () => {
     expect(result.title).toContain('Ish sonini kiriting');
   });
 
+  it.each(['1.5', 'Infinity'])('rejects non-integer quantity %s', (qty) => {
+    const form: TicketFormState = {
+      date: '2026-09-09',
+      party: '10',
+      color: 'Qora',
+      size: 'XL',
+      patta: '2',
+      qty,
+      entries: { Tikish: 1 }
+    };
+
+    expect(validateTicketForSubmission(form, sampleModel, sampleWorkers, sampleParties, submittedTickets).isValid).toBe(false);
+  });
+
+  it('rejects malformed patta values and operations outside the selected model', () => {
+    const malformedPatta = validateTicketForSubmission(
+      { date: '2026-09-09', party: '10', color: 'Qora', size: 'XL', patta: '2abc', qty: '50', entries: { Tikish: 1 } },
+      sampleModel,
+      sampleWorkers,
+      sampleParties,
+      submittedTickets
+    );
+    const unknownOperation = validateTicketForSubmission(
+      { date: '2026-09-09', party: '10', color: 'Qora', size: 'XL', patta: '2', qty: '50', entries: { Kesish: 1 } },
+      sampleModel,
+      sampleWorkers,
+      sampleParties,
+      submittedTickets
+    );
+
+    expect(malformedPatta.isValid).toBe(false);
+    expect(unknownOperation.isValid).toBe(false);
+  });
+
   it('rejects when worker is not selected for any operation', () => {
     const form: TicketFormState = {
       date: '2026-09-09',
