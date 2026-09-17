@@ -929,10 +929,17 @@
           <span>Korxonalar & Sexlar</span>
           <span class="section-count" id="companiesCountBadge">0</span>
         </div>
-        <button id="btnAddCompany" class="btn-action admin-only" style="padding: 6px 12px; font-size: 12px;">
-          <span>+ Yangi Sex</span>
-        </button>
+        <div class="admin-only" style="display: flex; gap: 8px;">
+          <button id="btnAddOwnerGlobal" class="btn-action" style="padding: 6px 12px; font-size: 12px; background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.4);">
+            <span>+ 📞 Rahbar</span>
+          </button>
+          <button id="btnAddCompany" class="btn-action" style="padding: 6px 12px; font-size: 12px;">
+            <span>+ Yangi Sex</span>
+          </button>
+        </div>
       </div>
+
+      <div id="pendingOwnersContainer" class="admin-only" style="display: none; margin-bottom: 16px;"></div>
 
       <div id="companiesList">
         <div class="state-message">Korxonalar yuklanmoqda...</div>
@@ -1270,6 +1277,47 @@
   </div>
 
   <!-- ============================================== -->
+  <!-- MODAL: ADD / REGISTER COMPANY OWNER -->
+  <!-- ============================================== -->
+  <div class="modal-overlay" id="ownerModal">
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+      <button class="sheet-close-btn" id="closeOwnerModalBtn">&times;</button>
+      <h2 style="font-size: 17px; font-weight: 800; margin-bottom: 6px;">📞 Korxona Rahbarini Qo'shish</h2>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+        Telefon raqamini kiriting. Rahbar botga <code>/start</code> bosib o'z kontaktini ulashishi bilan avtomatik ravishda korxona tizimiga kiritiladi.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Korxona (Sex):</label>
+        <select id="modalOwnerCompanySelect" class="form-input"></select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Telefon Raqami (Tavsiya etiladi):</label>
+        <input type="tel" id="modalOwnerPhoneInput" class="form-input" placeholder="+998901234567" />
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+          Format: +998901234567 yoki 901234567
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <label class="form-label">Yoki Telegram ID (Ixtiyoriy):</label>
+        <input type="text" id="modalOwnerTgIdInput" class="form-input" placeholder="Masalan: 274466315" />
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+          Agar foydalanuvchining Telegram ID si aniq ma'lum bo'lsa
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="btnSaveOwner" class="btn-action" style="flex: 1;">
+          <span>💾 Saqlash & Biriktirish</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
   <!-- MODAL: WORKER DETAILS SHEET -->
   <!-- ============================================== -->
   <div class="modal-overlay" id="workerDetailModal">
@@ -1373,8 +1421,25 @@
       isSuperAdmin: true,
       isCompanyOwner: false,
       isReadOnly: false,
-      currentUserId: ''
+      currentUserId: '',
+      companyOwners: {},
+      pendingOwners: {}
     };
+
+    function normalizePhone(phone) {
+      if (!phone) return '';
+      const digits = String(phone).replace(/\D/g, '');
+      if (digits.startsWith('998') && digits.length === 12) {
+        return '+' + digits;
+      }
+      if (digits.startsWith('8') && digits.length === 11) {
+        return '+7' + digits.substring(1);
+      }
+      if (digits.length === 9) {
+        return '+998' + digits;
+      }
+      return '+' + digits;
+    }
 
     // Parse URL Search Parameters (e.g. ?comp=comp_chilonzor)
     const urlParams = new URLSearchParams(window.location.search);
@@ -1600,6 +1665,7 @@
         // 1. Fetch Bot Config to identify Super Admin vs Company Owner
         let superAdmins = ['1526974123'];
         let companyOwners = {};
+        let pendingOwners = {};
         try {
           const cfgRes = await fetch(`${FIREBASE_BASE_URL}/bot_config.json`);
           if (cfgRes.ok) {
@@ -1608,9 +1674,13 @@
               if (Array.isArray(cfg.super_admin_chat_ids)) superAdmins = cfg.super_admin_chat_ids.map(String);
               if (Array.isArray(cfg.admin_chat_ids)) superAdmins = [...superAdmins, ...cfg.admin_chat_ids.map(String)];
               if (cfg.company_owners) companyOwners = cfg.company_owners;
+              if (cfg.pending_owners) pendingOwners = cfg.pending_owners;
             }
           }
         } catch (e) {}
+
+        state.companyOwners = companyOwners;
+        state.pendingOwners = pendingOwners;
 
         // 2. Fetch Companies Meta
         const compRes = await fetch(`${FIREBASE_BASE_URL}/companies_meta.json`);
@@ -1972,6 +2042,49 @@
       const compEntries = Object.entries(state.companies || {});
       document.getElementById('companiesCountBadge').textContent = compEntries.length;
 
+      // Render Pending Owners Box at the top for Super Admin
+      const pContainer = document.getElementById('pendingOwnersContainer');
+      if (pContainer) {
+        const pendingEntries = Object.entries(state.pendingOwners || {});
+        if (state.isSuperAdmin && pendingEntries.length > 0) {
+          pContainer.style.display = 'block';
+          let pHtml = `
+            <div class="card" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(15, 23, 42, 0.95)); border-color: rgba(245, 158, 11, 0.35); margin-bottom: 14px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div style="font-size: 14px; font-weight: 800; color: #fbbf24; display: flex; align-items: center; gap: 6px;">
+                  <span>⏳ Tasdiqlanishi Kutilayotgan Rahbarlar (${pendingEntries.length})</span>
+                </div>
+              </div>
+              <p style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 10px;">
+                Ushbu raqam egalari botga <code>/start</code> bosib kontaktini ulashishi bilan avtomatik tasdiqlanadi:
+              </p>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+          `;
+          for (const [phone, pinfo] of pendingEntries) {
+            const cName = pinfo?.companyName || pinfo?.companyId || 'Korxona';
+            const cId = pinfo?.companyId || '';
+            pHtml += `
+              <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                <div>
+                  <div style="font-size: 13.5px; font-weight: 700; color: #fff; font-family: monospace;">📞 ${escapeHtml(phone)}</div>
+                  <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+                    🏢 <b>${escapeHtml(cName)}</b> (<code>${escapeHtml(cId)}</code>)
+                  </div>
+                </div>
+                <button class="mini-btn btn-danger" onclick="deletePendingOwnerViaWebApp('${escapeHtml(phone)}')">
+                  <span>🗑️ Bekor qilish</span>
+                </button>
+              </div>
+            `;
+          }
+          pHtml += `</div></div>`;
+          pContainer.innerHTML = pHtml;
+        } else {
+          pContainer.style.display = 'none';
+          pContainer.innerHTML = '';
+        }
+      }
+
       if (!compEntries.length) {
         container.innerHTML = `<div class="state-message">Korxonalar mavjud emas.</div>`;
         return;
@@ -1980,8 +2093,61 @@
       let html = '';
       for (const [compId, comp] of compEntries) {
         const devCount = Object.values(state.devices).filter(d => d.companyId === compId).length;
-        const ownerId = comp.ownerTelegramId || comp.ownerId || 'Tayinlanmagan';
         const isStrict = !!comp.requireTicketValidation;
+
+        // Collect all active owners for this company
+        const activeOwners = [];
+        for (const [tgId, oInfo] of Object.entries(state.companyOwners || {})) {
+          const oComp = typeof oInfo === 'object' ? oInfo.companyId : String(oInfo);
+          if (oComp === compId && !activeOwners.includes(String(tgId))) {
+            activeOwners.push(String(tgId));
+          }
+        }
+        if (Array.isArray(comp.ownerChatIds)) {
+          for (const id of comp.ownerChatIds) {
+            if (!activeOwners.includes(String(id))) activeOwners.push(String(id));
+          }
+        }
+        if (comp.ownerTelegramId && !activeOwners.includes(String(comp.ownerTelegramId))) {
+          activeOwners.push(String(comp.ownerTelegramId));
+        }
+
+        // Collect pending owners for this company
+        const companyPending = [];
+        for (const [phone, pinfo] of Object.entries(state.pendingOwners || {})) {
+          if (pinfo && pinfo.companyId === compId) {
+            companyPending.push(phone);
+          }
+        }
+
+        // Owners HTML
+        let ownersHtml = '';
+        if (activeOwners.length > 0) {
+          ownersHtml = activeOwners.map(tgId => `
+            <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16,185,129,0.15); color: #34d399; padding: 3px 8px; border-radius: 6px; font-size: 11.5px; border: 1px solid rgba(16,185,129,0.25);">
+              👑 <code>${escapeHtml(tgId)}</code>
+              ${state.isSuperAdmin ? `<button onclick="removeCompanyOwnerViaWebApp('${escapeHtml(tgId)}', '${escapeHtml(compId)}')" style="background:none; border:none; color:#f87171; cursor:pointer; font-weight:800; font-size:13px; margin-left:4px; line-height:1;" title="O'chirish">&times;</button>` : ''}
+            </span>
+          `).join(' ');
+        } else {
+          ownersHtml = `<span style="color: var(--text-muted); font-size: 12px;">Tayinlanmagan</span>`;
+        }
+
+        // Pending phones HTML
+        let pendingHtml = '';
+        if (companyPending.length > 0) {
+          pendingHtml = `
+            <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+              <span style="font-size: 11px; color: #fbbf24; font-weight: 700;">⏳ Kutilayotgan:</span>
+              ${companyPending.map(ph => `
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(245,158,11,0.15); color: #fbbf24; padding: 2px 7px; border-radius: 6px; font-size: 11px; border: 1px solid rgba(245,158,11,0.25);">
+                  📞 <code>${escapeHtml(ph)}</code>
+                  ${state.isSuperAdmin ? `<button onclick="deletePendingOwnerViaWebApp('${escapeHtml(ph)}')" style="background:none; border:none; color:#f87171; cursor:pointer; font-weight:800; font-size:13px; margin-left:4px; line-height:1;" title="Bekor qilish">&times;</button>` : ''}
+                </span>
+              `).join(' ')}
+            </div>
+          `;
+        }
 
         html += `
           <div class="card">
@@ -1998,8 +2164,16 @@
             </div>
 
             <div class="card-meta">
-              <span>👤 Rahbar Telegram ID: <code>${escapeHtml(ownerId)}</code></span>
-              <span>📋 Qat'iy Tekshiruv: <strong style="color:${isStrict ? 'var(--success)' : 'var(--text-muted)'}">${isStrict ? 'ON (Majburiy)' : 'OFF (Ixtiyoriy)'}</strong></span>
+              <div>
+                <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px;">👤 Korxona Rahbari (Owner):</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                  ${ownersHtml}
+                </div>
+                ${pendingHtml}
+              </div>
+              <div style="margin-top: 8px;">
+                <span>📋 Qat'iy Tekshiruv: <strong style="color:${isStrict ? 'var(--success)' : 'var(--text-muted)'}">${isStrict ? 'ON (Majburiy)' : 'OFF (Ixtiyoriy)'}</strong></span>
+              </div>
             </div>
 
             <div class="card-actions">
@@ -2007,12 +2181,15 @@
                 <span>👁️ Tizimga O'tish</span>
               </button>
 
-              <div class="btn-group">
+              <div class="btn-group admin-only" style="${state.isSuperAdmin ? '' : 'display:none;'}">
+                <button class="mini-btn" style="background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3);" onclick="openOwnerModalForCompany('${escapeHtml(compId)}')">
+                  <span>+ 📞 Rahbar</span>
+                </button>
                 <button class="mini-btn" onclick="toggleStrictValidation('${escapeHtml(compId)}', ${!isStrict})">
                   <span>${isStrict ? 'Erkin rejim' : 'Qatʼiy rejim'}</span>
                 </button>
                 <button class="mini-btn btn-danger" onclick="deleteCompany('${escapeHtml(compId)}')">
-                  <span>🗑️ O'chirish</span>
+                  <span>🗑️</span>
                 </button>
               </div>
             </div>
@@ -2149,6 +2326,245 @@
         }
       } catch (e) {
         showToast('Xatolik yuz berdi', '❌');
+      }
+    }
+
+    // ==============================================
+    // OWNER MANAGEMENT (SUPER ADMIN ONLY)
+    // ==============================================
+    function renderOwnerCompanySelect(selectedCompId) {
+      const select = document.getElementById('modalOwnerCompanySelect');
+      if (!select) return;
+      select.innerHTML = '';
+      for (const [id, comp] of Object.entries(state.companies || {})) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${comp.name || id} (${id})`;
+        if (id === selectedCompId) opt.selected = true;
+        select.appendChild(opt);
+      }
+    }
+
+    function openOwnerModalForCompany(compId) {
+      if (!state.isSuperAdmin) {
+        showToast('Faqat Superadmin uchun!', '⛔');
+        return;
+      }
+      renderOwnerCompanySelect(compId || state.companyId);
+      document.getElementById('modalOwnerPhoneInput').value = '';
+      document.getElementById('modalOwnerTgIdInput').value = '';
+      document.getElementById('ownerModal').classList.add('open');
+      triggerHaptic('light');
+    }
+
+    const btnAddOwnerGlobal = document.getElementById('btnAddOwnerGlobal');
+    if (btnAddOwnerGlobal) {
+      btnAddOwnerGlobal.addEventListener('click', () => {
+        openOwnerModalForCompany(state.companyId);
+      });
+    }
+
+    const closeOwnerModalBtn = document.getElementById('closeOwnerModalBtn');
+    if (closeOwnerModalBtn) {
+      closeOwnerModalBtn.addEventListener('click', () => {
+        document.getElementById('ownerModal').classList.remove('open');
+      });
+    }
+
+    const btnSaveOwner = document.getElementById('btnSaveOwner');
+    if (btnSaveOwner) {
+      btnSaveOwner.addEventListener('click', async () => {
+        if (!state.isSuperAdmin) {
+          showToast('Faqat Superadmin uchun!', '⛔');
+          return;
+        }
+        const compId = document.getElementById('modalOwnerCompanySelect').value;
+        const phone = document.getElementById('modalOwnerPhoneInput').value.trim();
+        const tgId = document.getElementById('modalOwnerTgIdInput').value.trim();
+        const compName = state.companies[compId]?.name || compId;
+
+        if (!phone && !tgId) {
+          showToast('Kamida telefon raqami yoki Telegram ID kiriting!', '⚠️');
+          return;
+        }
+
+        let success = false;
+        if (phone) {
+          success = await addPendingOwnerViaWebApp(phone, compId, compName);
+        }
+        if (tgId) {
+          success = await setCompanyOwnerViaWebApp(tgId, compId, compName);
+        }
+
+        if (success) {
+          document.getElementById('ownerModal').classList.remove('open');
+        }
+      });
+    }
+
+    async function addPendingOwnerViaWebApp(phone, compId, compName) {
+      if (!state.isSuperAdmin) {
+        showToast('Faqat Superadmin uchun!', '⛔');
+        return false;
+      }
+      const normPhone = normalizePhone(phone);
+      if (!normPhone || normPhone.length < 10) {
+        showToast('Telefon raqami noto‘g‘ri kiritildi!', '⚠️');
+        return false;
+      }
+      if (!compId) {
+        showToast('Korxona tanlanmadi!', '⚠️');
+        return false;
+      }
+
+      const cName = compName || state.companies[compId]?.name || compId;
+      const payload = {
+        companyId: compId,
+        companyName: cName,
+        addedAt: new Date().toISOString()
+      };
+
+      triggerHaptic('medium');
+      showToast('Saqlanmoqda...', '⏳');
+
+      try {
+        const res = await fetch(`${FIREBASE_BASE_URL}/bot_config/pending_owners/${encodeURIComponent(normPhone)}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          state.pendingOwners[normPhone] = payload;
+          renderCompaniesList();
+          showToast(`Raqam ro'yxatga olindi: ${normPhone}`, '✅');
+          return true;
+        } else {
+          showToast('Xatolik: Saqlab bo‘lmadi', '❌');
+          return false;
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Server bilan aloqa uzildi', '❌');
+        return false;
+      }
+    }
+
+    async function deletePendingOwnerViaWebApp(phone) {
+      if (!state.isSuperAdmin) {
+        showToast('Faqat Superadmin uchun!', '⛔');
+        return;
+      }
+      if (!confirm(`Haqiqatan ham "${phone}" raqamini kutilayotganlar ro'yxatidan o'chirmoqchimisiz?`)) {
+        return;
+      }
+
+      triggerHaptic('heavy');
+      showToast('O‘chirilmoqda...', '⏳');
+
+      try {
+        const res = await fetch(`${FIREBASE_BASE_URL}/bot_config/pending_owners/${encodeURIComponent(phone)}.json`, {
+          method: 'DELETE'
+        });
+
+        if (res.ok) {
+          delete state.pendingOwners[phone];
+          renderCompaniesList();
+          showToast(`Raqam o‘chirildi: ${phone}`, '🗑️');
+        } else {
+          showToast('O‘chirishda xatolik yuz berdi', '❌');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Aloqa xatosi', '❌');
+      }
+    }
+
+    async function setCompanyOwnerViaWebApp(tgId, compId, compName) {
+      if (!state.isSuperAdmin) {
+        showToast('Faqat Superadmin uchun!', '⛔');
+        return false;
+      }
+      const cName = compName || state.companies[compId]?.name || compId;
+      const cleanId = String(tgId).trim();
+      if (!cleanId || !/^\d+$/.test(cleanId)) {
+        showToast('Telegram ID faqat raqamlardan iborat bo‘lishi kerak!', '⚠️');
+        return false;
+      }
+
+      triggerHaptic('medium');
+      showToast('Saqlanmoqda...', '⏳');
+
+      try {
+        const payload = {
+          companyId: compId,
+          companyName: cName,
+          assignedAt: new Date().toISOString()
+        };
+
+        await fetch(`${FIREBASE_BASE_URL}/bot_config/company_owners/${cleanId}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (compId && state.companies[compId]) {
+          const owners = Array.isArray(state.companies[compId].ownerChatIds) ? [...state.companies[compId].ownerChatIds] : [];
+          if (!owners.map(String).includes(cleanId)) {
+            owners.push(parseInt(cleanId, 10));
+            await fetch(`${FIREBASE_BASE_URL}/companies_meta/${compId}/ownerChatIds.json`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(owners)
+            });
+            state.companies[compId].ownerChatIds = owners;
+          }
+        }
+
+        state.companyOwners[cleanId] = payload;
+        renderCompaniesList();
+        showToast(`Rahbar tayinlandi: ${cleanId}`, '✅');
+        return true;
+      } catch (e) {
+        console.error(e);
+        showToast('Aloqa xatosi', '❌');
+        return false;
+      }
+    }
+
+    async function removeCompanyOwnerViaWebApp(tgId, compId) {
+      if (!state.isSuperAdmin) {
+        showToast('Faqat Superadmin uchun!', '⛔');
+        return;
+      }
+      if (!confirm(`Haqiqatan ham "${tgId}" ID li rahbarni o'chirmoqchimisiz?`)) {
+        return;
+      }
+
+      triggerHaptic('heavy');
+      showToast('O‘chirilmoqda...', '⏳');
+
+      try {
+        await fetch(`${FIREBASE_BASE_URL}/bot_config/company_owners/${encodeURIComponent(tgId)}.json`, {
+          method: 'DELETE'
+        });
+
+        if (compId && state.companies[compId]) {
+          const owners = (state.companies[compId].ownerChatIds || []).filter(id => String(id) !== String(tgId));
+          await fetch(`${FIREBASE_BASE_URL}/companies_meta/${compId}/ownerChatIds.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(owners)
+          });
+          state.companies[compId].ownerChatIds = owners;
+        }
+
+        delete state.companyOwners[String(tgId)];
+        renderCompaniesList();
+        showToast(`Rahbar o‘chirildi: ${tgId}`, '✅');
+      } catch (e) {
+        console.error(e);
+        showToast('Aloqa xatosi', '❌');
       }
     }
 
