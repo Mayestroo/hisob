@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Clock, RefreshCw, Copy, Check, KeyRound, Building2, ShieldAlert } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore, applyRolePermissions } from '../store/authStore';
 import { useWorkbookStore } from '../store/workbookStore';
 
 interface PendingApprovalProps {
@@ -202,6 +202,63 @@ export const PendingApproval: React.FC<PendingApprovalProps> = ({ isBlocked: pro
             <KeyRound size={14} />
             <span>Menda aktivatsiya kodi bor</span>
           </button>
+
+          {import.meta.env.DEV && (
+            <div style={{ marginTop: '6px', borderTop: '1px dashed var(--border-subtle)', paddingTop: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const perms = applyRolePermissions('admin');
+                  useAuthStore.getState().setAuth({
+                    status: 'active',
+                    role: 'admin',
+                    companyId: 'comp_novda',
+                    permissions: perms,
+                    user: {
+                      uid: 'dev_admin',
+                      email: 'dev@novda.uz',
+                      displayName: 'Dev Administrator',
+                      role: 'admin',
+                      permissions: perms,
+                      companyId: 'comp_novda',
+                      deviceId: deviceId,
+                      status: 'active',
+                      lastSeen: new Date().toISOString(),
+                      createdAt: new Date().toISOString()
+                    }
+                  });
+                  useWorkbookStore.setState({
+                    licenseStatus: {
+                      isActivated: true,
+                      machineId: deviceId,
+                      role: 'admin',
+                      companyId: 'comp_novda',
+                      companyName: 'Novda (Dev)',
+                      isLifetime: true
+                    }
+                  });
+                }}
+                className="soft-btn"
+                style={{
+                  width: '100%',
+                  padding: '9px 16px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                  color: '#d97706',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  borderRadius: 'var(--radius-full)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>⚡ Dev Rejimida Kirish (Admin)</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
