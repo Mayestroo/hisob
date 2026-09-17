@@ -748,7 +748,84 @@
       color: var(--text-muted);
       font-size: 13px;
     }
+
+    /* Sub-Tabs and Enterprise Dashboard Styles */
+    .sub-tabs-container {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 6px 0 4px;
+      margin-top: 12px;
+      scrollbar-width: none;
+    }
+    .sub-tabs-container::-webkit-scrollbar { display: none; }
+    .sub-tab-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sub-tab-btn:hover {
+      border-color: var(--border-accent);
+      color: var(--text-primary);
+    }
+    .sub-tab-btn.active {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+    }
+    .read-only-mode .admin-only {
+      display: none !important;
+    }
+    .read-only-mode .admin-action {
+      display: none !important;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-info {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .badge-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .ticket-feed-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      transition: all 0.2s ease;
+    }
+    .ticket-feed-card:hover {
+      border-color: var(--border-accent);
+    }
   </style>
+
 </head>
 <body>
 
@@ -831,7 +908,7 @@
           <span>Korxonalar & Sexlar</span>
           <span class="section-count" id="companiesCountBadge">0</span>
         </div>
-        <button id="btnAddCompany" class="btn-action" style="padding: 6px 12px; font-size: 12px;">
+        <button id="btnAddCompany" class="btn-action admin-only" style="padding: 6px 12px; font-size: 12px;">
           <span>+ Yangi Sex</span>
         </button>
       </div>
@@ -927,76 +1004,220 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- TAB 5: 📊 HISOBOT (PAYROLL & PRODUCTION) -->
+    <!-- ============================================== -->
+    <!-- TAB 5: 🏢 KORXONA BOSHQARUV TIZIMI & STATISTIKASI -->
     <!-- ============================================== -->
     <section id="tabUmumiy" class="tab-view" style="display: none;">
-      <!-- Active Period Banner -->
-      <div class="card" id="periodCard" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.45), rgba(15, 23, 42, 0.65)); border-color: rgba(56, 189, 248, 0.3); display: flex; align-items: center; justify-content: space-between;">
-        <div>
-          <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Joriy Hisob Davri</div>
-          <div id="currentPeriodName" style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">Yuklanmoqda...</div>
-        </div>
-        <div style="padding: 4px 10px; background: rgba(16, 185, 129, 0.2); color: var(--success); border-radius: 8px; font-size: 11.5px; font-weight: 800;">FAOL</div>
-      </div>
-
-      <!-- Executive KPI Cards -->
-      <div class="kpi-grid">
-        <div class="kpi-card hero">
-          <div class="kpi-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            Jami Sof Foyda (Xodimlarga to'lanadigan)
+      <!-- Company Header & Navigation Banner -->
+      <div class="card" style="margin-bottom: 14px; background: linear-gradient(135deg, rgba(30, 58, 138, 0.35), rgba(15, 23, 42, 0.75)); border-color: rgba(56, 189, 248, 0.3);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button id="btnBackToCompanies" class="mini-btn admin-only" style="display: none; padding: 4px 10px; font-weight: 700; background: rgba(255,255,255,0.08);">
+                ⬅️ Sexlar
+              </button>
+              <h2 id="viewCompTitle" style="font-size: 17px; font-weight: 800; color: var(--text-primary); margin: 0;">🏢 Korxona Tizimi</h2>
+            </div>
+            <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+              <span>ID: <code id="viewCompId" style="color: var(--accent);">comp_novda</code></span>
+              <span id="viewOnlyBadge" class="badge badge-info" style="display: none;">👁️ Faqat Ko'rish (Rahbar)</span>
+            </div>
           </div>
-          <div class="kpi-value" id="kpiSofFoyda">0 so'm</div>
-          <div class="kpi-sub">Barcha avans va jarimalar chegirilgan sof summa</div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 11px; color: var(--text-secondary);">Joriy Davr:</div>
+            <div id="currentPeriodName" style="font-size: 13.5px; font-weight: 800; color: var(--text-primary);">Yuklanmoqda...</div>
+          </div>
         </div>
 
-        <div class="kpi-card">
-          <div class="kpi-title">Jami Hisoblangan</div>
-          <div class="kpi-value" id="kpiUmumiy">0 so'm</div>
-          <div class="kpi-sub" id="kpiPiecesCount">0 dona ish bajarildi</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-title">Berilgan Avanslar</div>
-          <div class="kpi-value" id="kpiAvans" style="color: var(--warning);">0 so'm</div>
-          <div class="kpi-sub" id="kpiAvansCount">0 ta xodim oldi</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-title">Ushlangan Jarimalar</div>
-          <div class="kpi-value" id="kpiJarima" style="color: var(--danger);">0 so'm</div>
-          <div class="kpi-sub" id="kpiJarimaCount">0 ta jarima</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-title">Xodimlar & Modellar</div>
-          <div class="kpi-value" id="kpiCounts">0 / 0</div>
-          <div class="kpi-sub">Ishchilar va modellar soni</div>
+        <!-- Sub-Navigation for Company Views -->
+        <div class="sub-tabs-container">
+          <button class="sub-tab-btn active" id="subTab_payroll_Btn" onclick="switchCompanySubView('payroll')">📊 Oyliklar & Xodimlar</button>
+          <button class="sub-tab-btn" id="subTab_models_Btn" onclick="switchCompanySubView('models')">👕 Modellar & Partiyalar</button>
+          <button class="sub-tab-btn" id="subTab_tickets_Btn" onclick="switchCompanySubView('tickets')">🎫 Topshirilgan Pattalar</button>
+          <button class="sub-tab-btn" id="subTab_devices_Btn" onclick="switchCompanySubView('devices')">💻 Sex Kompyuterlari</button>
         </div>
       </div>
 
-      <!-- Search & Filters -->
-      <div class="section-header">
-        <div class="section-title">
-          <span>Xodimlar Hisobot Jadvali</span>
-          <span class="section-count" id="workersCountBadge">0</span>
+      <!-- VIEW 1: PAYROLL & EMPLOYEES -->
+      <div id="subView_payroll">
+        <!-- Executive KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card hero">
+            <div class="kpi-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Jami Sof Foyda (Xodimlarga to'lanadigan)
+            </div>
+            <div class="kpi-value" id="kpiSofFoyda">0 so'm</div>
+            <div class="kpi-sub">Barcha avans va jarimalar chegirilgan sof summa</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title">Jami Hisoblangan</div>
+            <div class="kpi-value" id="kpiUmumiy">0 so'm</div>
+            <div class="kpi-sub" id="kpiPiecesCount">0 dona ish bajarildi</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title">Berilgan Avanslar</div>
+            <div class="kpi-value" id="kpiAvans" style="color: var(--warning);">0 so'm</div>
+            <div class="kpi-sub" id="kpiAvansCount">0 ta xodim oldi</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title">Ushlangan Jarimalar</div>
+            <div class="kpi-value" id="kpiJarima" style="color: var(--danger);">0 so'm</div>
+            <div class="kpi-sub" id="kpiJarimaCount">0 ta jarima</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title">Xodimlar & Modellar</div>
+            <div class="kpi-value" id="kpiCounts">0 / 0</div>
+            <div class="kpi-sub">Ishchilar va modellar soni</div>
+          </div>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="section-header">
+          <div class="section-title">
+            <span>Xodimlar Hisobot Jadvali</span>
+            <span class="section-count" id="workersCountBadge">0</span>
+          </div>
+        </div>
+
+        <div class="search-box">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8" stroke-width="2"></circle><path d="m21 21-4.35-4.35" stroke-width="2"></path></svg>
+          <input type="text" id="workerSearchInput" class="search-input" placeholder="Xodim ismi yoki ID bo'yicha qidirish..." />
+        </div>
+
+        <div class="filter-pills">
+          <button class="pill active" data-filter="all">Barchasi</button>
+          <button class="pill" data-filter="active">Faqat ishlaganlar</button>
+          <button class="pill" data-filter="avans">Avansi borlar</button>
+          <button class="pill" data-filter="jarima">Jarimali</button>
+        </div>
+
+        <div class="payroll-list" id="payrollList">
+          <div class="state-message">Ma'lumotlar yuklanmoqda...</div>
         </div>
       </div>
 
-      <div class="search-box">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8" stroke-width="2"></circle><path d="m21 21-4.35-4.35" stroke-width="2"></path></svg>
-        <input type="text" id="workerSearchInput" class="search-input" placeholder="Xodim ismi yoki ID bo'yicha qidirish..." />
+      <!-- VIEW 2: MODELS & PRODUCTION BATCHES -->
+      <div id="subView_models" style="display: none;">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-title">Faol Modellar</div>
+            <div class="kpi-value" id="kpiModelsCount">0 ta model</div>
+            <div class="kpi-sub">Korxonadagi jami kiyim modellari</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title">Chiqarilgan Partiyalar</div>
+            <div class="kpi-value" id="kpiPartiesCount" style="color: var(--accent);">0 ta partiya</div>
+            <div class="kpi-sub">Bichilgan partiyalar tarixi</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title">Rejalashtirilgan Donalar</div>
+            <div class="kpi-value" id="kpiTotalPlannedPieces" style="color: var(--success);">0 dona</div>
+            <div class="kpi-sub">Barcha modellar reja hajmi</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title">Tikilgan Donalar</div>
+            <div class="kpi-value" id="kpiTotalStitchedPieces" style="color: #fbbf24;">0 dona</div>
+            <div class="kpi-sub">Chiptalar orqali qabul qilingan</div>
+          </div>
+        </div>
+
+        <div class="section-header" style="margin-top: 14px;">
+          <div class="section-title">
+            <span>👕 Modellar Ro'yxati & Operatsiyalar</span>
+            <span class="section-count" id="modelsCountBadge">0</span>
+          </div>
+        </div>
+
+        <div class="search-box">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8" stroke-width="2"></circle><path d="m21 21-4.35-4.35" stroke-width="2"></path></svg>
+          <input type="text" id="modelSearchInput" class="search-input" placeholder="Model nomi yoki kodi bo'yicha qidirish..." />
+        </div>
+
+        <div id="modelsList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+          <div class="state-message">Modellar yuklanmoqda...</div>
+        </div>
+
+        <div class="section-header">
+          <div class="section-title">
+            <span>📦 Partiyalar Tarixi (Bichuv)</span>
+            <span class="section-count" id="partyHistoryCountBadge">0</span>
+          </div>
+        </div>
+
+        <div id="partyHistoryList" style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="state-message">Partiyalar yuklanmoqda...</div>
+        </div>
       </div>
 
-      <div class="filter-pills">
-        <button class="pill active" data-filter="all">Barchasi</button>
-        <button class="pill" data-filter="active">Faqat ishlaganlar</button>
-        <button class="pill" data-filter="avans">Avansi borlar</button>
-        <button class="pill" data-filter="jarima">Jarimali</button>
+      <!-- VIEW 3: CONVEYOR & SUBMITTED TICKETS FEED -->
+      <div id="subView_tickets" style="display: none;">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-title">Jami Topshirilgan Pattalar</div>
+            <div class="kpi-value" id="kpiTicketsCount">0 ta patta</div>
+            <div class="kpi-sub">Konveyerlardan qabul qilingan chiptalar</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-title">Pattalar Hajmi</div>
+            <div class="kpi-value" id="kpiTicketsPieces" style="color: var(--success);">0 dona</div>
+            <div class="kpi-sub">Chiptalar bo'yicha tikilgan jami donalar</div>
+          </div>
+        </div>
+
+        <div class="section-header" style="margin-top: 14px;">
+          <div class="section-title">
+            <span>🎫 Jonli Pattalar Oqimi (Topshirilgan Chiptalar)</span>
+            <span class="section-count" id="ticketsCountBadge">0</span>
+          </div>
+        </div>
+
+        <div class="search-box">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8" stroke-width="2"></circle><path d="m21 21-4.35-4.35" stroke-width="2"></path></svg>
+          <input type="text" id="ticketSearchInput" class="search-input" placeholder="Patta №, Partiya № yoki Model bo'yicha qidirish..." />
+        </div>
+
+        <div class="filter-pills" id="conveyorFilterPills">
+          <button class="pill active" data-ticket-filter="all">Barchasi</button>
+          <button class="pill" data-ticket-filter="1">1-Konveyer</button>
+          <button class="pill" data-ticket-filter="2">2-Konveyer</button>
+          <button class="pill" data-ticket-filter="3">3-Konveyer</button>
+        </div>
+
+        <div id="ticketsFeedList" style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="state-message">Chiptalar yuklanmoqda...</div>
+        </div>
       </div>
 
-      <div class="payroll-list" id="payrollList">
-        <div class="state-message">Ma'lumotlar yuklanmoqda...</div>
+      <!-- VIEW 4: COMPANY WORKSTATIONS / COMPUTERS -->
+      <div id="subView_devices" style="display: none;">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-title">Sexga Biriktirilgan Kompyuterlar</div>
+            <div class="kpi-value" id="kpiCompanyDevCount">0 ta qurilma</div>
+            <div class="kpi-sub">Ushbu korxonadagi ulangan kompyuterlar</div>
+          </div>
+        </div>
+
+        <div class="section-header" style="margin-top: 14px;">
+          <div class="section-title">
+            <span>💻 Ish O'rinlari & Holati</span>
+            <span class="section-count" id="companyDevBadge">0</span>
+          </div>
+        </div>
+
+        <div id="companyDevicesList" style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="state-message">Qurilmalar yuklanmoqda...</div>
+        </div>
       </div>
     </section>
 
@@ -1083,26 +1304,26 @@
   <!-- BOTTOM NAVIGATION BAR (5 TABS) -->
   <!-- ============================================== -->
   <nav class="bottom-nav">
-    <a class="nav-item active" data-tab="tabDevices">
+    <a class="nav-item active admin-only" data-tab="tabDevices">
       <div class="nav-badge" id="navDevBadge" style="display: none;"></div>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>
       <span>Qurilmalar</span>
     </a>
-    <a class="nav-item" data-tab="tabCompanies">
+    <a class="nav-item admin-only" data-tab="tabCompanies">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
       <span>Sexlar</span>
     </a>
-    <a class="nav-item" data-tab="tabKeys">
+    <a class="nav-item admin-only" data-tab="tabKeys">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m21 2-2 2m-1.5 1.5L14 9l-1.5-1.5L10 10l2 2-7 7a2 2 0 0 1-2.83-2.83l7-7-2-2 2.5-2.5 1.5 1.5L19 3.5"/><circle cx="15.5" cy="8.5" r=".5" fill="currentColor"/></svg>
       <span>Kalitlar</span>
+    </a>
+    <a class="nav-item" data-tab="tabUmumiy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
+      <span>Boshqaruv</span>
     </a>
     <a class="nav-item" data-tab="tabWorkers">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Ishchilar</span>
-    </a>
-    <a class="nav-item" data-tab="tabUmumiy">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
-      <span>Hisobot</span>
     </a>
   </nav>
 
@@ -1124,24 +1345,39 @@
     const state = {
       activeTab: 'tabDevices',
       companyId: 'comp_novda',
+      activeCompanySubView: 'payroll',
       companies: {},
       devices: {},
       workers: [],
       models: [],
+      printedPartyHistory: [],
+      submittedTickets: [],
       workerBindings: {},
       currentPeriod: null,
       deviceFilter: 'all',
       workerFilter: 'all',
+      ticketFilter: 'all',
       deviceSearch: '',
       workerSearch: '',
+      modelSearch: '',
+      ticketSearch: '',
       isSuperAdmin: true,
+      isCompanyOwner: false,
+      isReadOnly: false,
       currentUserId: ''
     };
+
+    // Parse URL Search Parameters (e.g. ?comp=comp_chilonzor)
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramComp = urlParams.get('comp') || urlParams.get('companyId');
+    if (paramComp) {
+      state.companyId = paramComp;
+    }
 
     // User Context & Auth
     const tgUser = tg?.initDataUnsafe?.user;
     if (tgUser) {
-      document.getElementById('userGreeting').textContent = `Assalomu alaykum, ${tgUser.first_name || 'Admin'}!`;
+      document.getElementById('userGreeting').textContent = `Assalomu alaykum, ${tgUser.first_name || 'Foydalanuvchi'}!`;
       state.currentUserId = String(tgUser.id);
     }
     const SUPER_ADMIN_ID = '1526974123';
@@ -1260,20 +1496,87 @@
     // ==============================================
     async function fetchAllData() {
       const refreshBtn = document.getElementById('refreshBtn');
-      refreshBtn.classList.add('spinning');
+      if (refreshBtn) refreshBtn.classList.add('spinning');
       triggerHaptic('light');
 
       try {
-        // 1. Fetch Companies
+        // 1. Fetch Bot Config to identify Super Admin vs Company Owner
+        let superAdmins = ['1526974123'];
+        let companyOwners = {};
+        try {
+          const cfgRes = await fetch(`${FIREBASE_BASE_URL}/bot_config.json`);
+          if (cfgRes.ok) {
+            const cfg = await cfgRes.json();
+            if (cfg) {
+              if (Array.isArray(cfg.super_admin_chat_ids)) superAdmins = cfg.super_admin_chat_ids.map(String);
+              if (Array.isArray(cfg.admin_chat_ids)) superAdmins = [...superAdmins, ...cfg.admin_chat_ids.map(String)];
+              if (cfg.company_owners) companyOwners = cfg.company_owners;
+            }
+          }
+        } catch (e) {}
+
+        // 2. Fetch Companies Meta
         const compRes = await fetch(`${FIREBASE_BASE_URL}/companies_meta.json`);
         if (compRes.ok) {
           const compData = await compRes.json();
           state.companies = compData && typeof compData === 'object' ? compData : {};
-          renderCompanySelect();
-          renderCompaniesList();
         }
 
-        // 2. Fetch Devices
+        // 3. User Identity & Authorization
+        const isSuper = !state.currentUserId || superAdmins.includes(state.currentUserId);
+        let ownerCompId = null;
+
+        if (state.currentUserId && companyOwners[state.currentUserId]) {
+          const oEntry = companyOwners[state.currentUserId];
+          ownerCompId = typeof oEntry === 'object' ? oEntry.companyId : String(oEntry);
+        } else if (state.currentUserId && state.companies) {
+          for (const [cId, comp] of Object.entries(state.companies)) {
+            const owners = Array.isArray(comp.ownerChatIds) ? comp.ownerChatIds.map(String) : [];
+            if (owners.includes(state.currentUserId)) {
+              ownerCompId = cId;
+              break;
+            }
+          }
+        }
+
+        if (isSuper) {
+          state.isSuperAdmin = true;
+          state.isCompanyOwner = false;
+          state.isReadOnly = false;
+          document.body.classList.remove('read-only-mode');
+          document.getElementById('roleBadge').textContent = 'Admin';
+          document.getElementById('roleBadge').style.background = 'rgba(56, 189, 248, 0.2)';
+          document.getElementById('roleBadge').style.color = 'var(--accent)';
+          document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+          const sel = document.getElementById('companySelect');
+          if (sel) sel.disabled = false;
+        } else if (ownerCompId) {
+          state.isSuperAdmin = false;
+          state.isCompanyOwner = true;
+          state.isReadOnly = true;
+          state.companyId = ownerCompId;
+          document.body.classList.add('read-only-mode');
+          document.getElementById('roleBadge').textContent = 'Rahbar (Only-View)';
+          document.getElementById('roleBadge').style.background = 'rgba(16, 185, 129, 0.2)';
+          document.getElementById('roleBadge').style.color = 'var(--success)';
+          document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+          const sel = document.getElementById('companySelect');
+          if (sel) sel.disabled = true;
+          if (state.activeTab !== 'tabUmumiy' && state.activeTab !== 'tabWorkers') {
+            switchTab('tabUmumiy');
+          }
+        } else {
+          // Unknown / Guest: read-only
+          state.isSuperAdmin = false;
+          state.isReadOnly = true;
+          document.body.classList.add('read-only-mode');
+          document.getElementById('roleBadge').textContent = 'Mehmon (Only-View)';
+        }
+
+        renderCompanySelect();
+        renderCompaniesList();
+
+        // 4. Fetch Devices
         const devRes = await fetch(`${FIREBASE_BASE_URL}/devices.json`);
         if (devRes.ok) {
           const devData = await devRes.json();
@@ -1282,7 +1585,7 @@
           populateQuickDevicePicker();
         }
 
-        // 3. Fetch Company Specific SyncData
+        // 5. Fetch Company Specific SyncData
         if (state.companyId) {
           const syncRes = await fetch(`${FIREBASE_BASE_URL}/companies/${state.companyId}/syncData.json`);
           if (syncRes.ok) {
@@ -1290,18 +1593,28 @@
             if (syncData) {
               state.workers = Array.isArray(syncData.workers) ? syncData.workers : Object.values(syncData.workers || {});
               state.models = Array.isArray(syncData.models) ? syncData.models : Object.values(syncData.models || {});
+              state.printedPartyHistory = Array.isArray(syncData.printedPartyHistory) ? syncData.printedPartyHistory : Object.values(syncData.printedPartyHistory || {});
+              state.submittedTickets = Array.isArray(syncData.submittedTickets) ? syncData.submittedTickets : Object.values(syncData.submittedTickets || {});
               state.currentPeriod = syncData.currentPeriod || null;
-              renderPayrollAnalytics();
+            } else {
+              state.workers = [];
+              state.models = [];
+              state.printedPartyHistory = [];
+              state.submittedTickets = [];
+              state.currentPeriod = null;
             }
           }
 
-          // 4. Fetch Worker Bindings
+          // 6. Fetch Worker Bindings
           const bindRes = await fetch(`${FIREBASE_BASE_URL}/companies/${state.companyId}/worker_bindings.json`);
           if (bindRes.ok) {
             const bindData = await bindRes.json();
             state.workerBindings = bindData && typeof bindData === 'object' ? bindData : {};
             renderWorkerBindings();
           }
+
+          // Render Company Overview (all 4 tabs)
+          renderCompanyOverview();
         }
 
         const now = new Date();
@@ -1310,12 +1623,12 @@
         console.error('Fetch error:', err);
         showToast('Tarmoq xatosi yuz berdi', '⚠️');
       } finally {
-        setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+        if (refreshBtn) setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
       }
     }
 
     // ==============================================
-    // RENDER: DEVICES (TAB 1)
+    // RENDER: DEVICES    // RENDER: DEVICES (TAB 1)
     // ==============================================
     function renderDevicesList() {
       const container = document.getElementById('devicesList');
@@ -1437,6 +1750,7 @@
     // ACTIONS: DEVICE CONTROL
     // ==============================================
     async function setDeviceRole(machId, newRole) {
+      if (state.isReadOnly || !state.isSuperAdmin) { showToast('Faqat ko‘rish rejimi: Sizda ruxsat yo‘q', '⚠️'); return; }
       triggerHaptic('medium');
       showToast(`Rol o'zgartirilmoqda: ${newRole.toUpperCase()}...`, '⏳');
       try {
@@ -1460,6 +1774,7 @@
     }
 
     async function setDeviceCompany(machId, companyId) {
+      if (state.isReadOnly || !state.isSuperAdmin) { showToast('Faqat ko‘rish rejimi: Sizda ruxsat yo‘q', '⚠️'); return; }
       if (!companyId) return;
       triggerHaptic('medium');
       const compName = state.companies[companyId]?.name || companyId;
@@ -1489,6 +1804,7 @@
     }
 
     async function toggleDeviceBlock(machId, isBlocked) {
+      if (state.isReadOnly || !state.isSuperAdmin) { showToast('Faqat ko‘rish rejimi: Sizda ruxsat yo‘q', '⚠️'); return; }
       triggerHaptic('heavy');
       const actionTxt = isBlocked ? 'Bloklanmoqda...' : 'Ochilmoqda...';
       showToast(actionTxt, '⏳');
@@ -1514,6 +1830,7 @@
     }
 
     async function approveDeviceDirectly(machId) {
+      if (state.isReadOnly || !state.isSuperAdmin) { showToast('Faqat ko‘rish rejimi: Sizda ruxsat yo‘q', '⚠️'); return; }
       triggerHaptic('heavy');
       showToast('Qurilma tasdiqlanmoqda...', '⏳');
       try {
@@ -1624,8 +1941,15 @@
     function selectCompany(compId) {
       state.companyId = compId;
       renderCompanySelect();
+      const backBtn = document.getElementById('btnBackToCompanies');
+      if (backBtn && state.isSuperAdmin) {
+        backBtn.style.display = 'inline-flex';
+      }
       switchTab('tabUmumiy');
       fetchAllData();
+      triggerHaptic('medium');
+      const compName = state.companies[compId]?.name || compId;
+      showToast(`${compName} tizimiga o'tildi`, '🏢');
     }
 
     document.getElementById('companySelect').addEventListener('change', (e) => {
@@ -1688,6 +2012,7 @@
     });
 
     async function toggleStrictValidation(compId, newVal) {
+      if (state.isReadOnly || !state.isSuperAdmin) { showToast('Faqat ko‘rish rejimi: Sizda ruxsat yo‘q', '⚠️'); return; }
       triggerHaptic('medium');
       try {
         const res = await fetch(`${FIREBASE_BASE_URL}/companies_meta/${compId}.json`, {
@@ -1706,6 +2031,7 @@
     }
 
     async function deleteCompany(compId) {
+      if (state.isReadOnly || !state.isSuperAdmin) { showToast('Faqat ko‘rish rejimi: Sizda ruxsat yo‘q', '⚠️'); return; }
       if (compId === 'comp_novda') {
         showToast('Asosiy korxonani o‘chirib bo‘lmaydi!', '⚠️');
         return;
@@ -1890,6 +2216,7 @@
     }
 
     async function unbindWorker(workerId, oldTgId) {
+      if (state.isReadOnly || !state.isSuperAdmin) { showToast('Faqat ko‘rish rejimi: Sizda ruxsat yo‘q', '⚠️'); return; }
       if (!confirm(`Haqiqatan ham #${workerId}-ishchini Telegram hisobidan uzmoqchimisiz?`)) return;
       triggerHaptic('heavy');
       showToast('Uzilmoqda...', '⏳');
@@ -2081,6 +2408,271 @@
       });
     }
 
+
+    // ==============================================
+    // TAB 5: ENTERPRISE OVERVIEW & SUB-VIEWS
+    // ==============================================
+    function switchCompanySubView(subViewName) {
+      state.activeCompanySubView = subViewName;
+      ['payroll', 'models', 'tickets', 'devices'].forEach(v => {
+        const el = document.getElementById(`subView_${v}`);
+        const btn = document.getElementById(`subTab_${v}_Btn`);
+        if (el) el.style.display = (v === subViewName) ? 'block' : 'none';
+        if (btn) btn.classList.toggle('active', v === subViewName);
+      });
+      triggerHaptic('selection');
+    }
+
+    function renderCompanyOverview() {
+      const compName = state.companies[state.companyId]?.name || state.companyId;
+      document.getElementById('viewCompTitle').textContent = `🏢 ${compName}`;
+      document.getElementById('viewCompId').textContent = state.companyId;
+
+      const periodNameEl = document.getElementById('currentPeriodName');
+      if (periodNameEl) {
+        periodNameEl.textContent = state.currentPeriod?.name || 'Joriy Davr';
+      }
+
+      const backBtn = document.getElementById('btnBackToCompanies');
+      if (backBtn) {
+        backBtn.style.display = state.isSuperAdmin ? 'inline-flex' : 'none';
+      }
+
+      const onlyBadge = document.getElementById('viewOnlyBadge');
+      if (onlyBadge) {
+        onlyBadge.style.display = state.isReadOnly ? 'inline-flex' : 'none';
+      }
+
+      renderPayrollAnalytics();
+      renderModelsAndParties();
+      renderConveyorTickets();
+      renderCompanyWorkstations();
+    }
+
+    // Sub-View 2: Models & Production Batches
+    function renderModelsAndParties() {
+      const models = state.models || [];
+      const parties = state.printedPartyHistory || [];
+
+      // Calculate totals
+      const totalPlanned = models.reduce((sum, m) => sum + (Number(m.totalQuantity) || 0), 0);
+      const totalStitched = (state.submittedTickets || []).reduce((sum, t) => sum + (Number(t.qty) || 0), 0);
+
+      document.getElementById('kpiModelsCount').textContent = `${models.length} ta model`;
+      document.getElementById('kpiPartiesCount').textContent = `${parties.length} ta partiya`;
+      document.getElementById('kpiTotalPlannedPieces').textContent = `${formatNumber(totalPlanned)} dona`;
+      document.getElementById('kpiTotalStitchedPieces').textContent = `${formatNumber(totalStitched)} dona`;
+      document.getElementById('modelsCountBadge').textContent = models.length;
+      document.getElementById('partyHistoryCountBadge').textContent = parties.length;
+
+      // 1. Render Models List
+      const modelsContainer = document.getElementById('modelsList');
+      const q = (state.modelSearch || '').toLowerCase();
+      const filteredModels = models.filter(m => {
+        if (!q) return true;
+        return (m.name || '').toLowerCase().includes(q) || (m.code || '').toLowerCase().includes(q);
+      });
+
+      if (!filteredModels.length) {
+        modelsContainer.innerHTML = '<div class="state-message">Modellar topilmadi.</div>';
+      } else {
+        let mHtml = '';
+        for (const m of filteredModels) {
+          const ops = m.operations || [];
+          mHtml += `
+            <div class="card" style="padding: 14px 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <div>
+                  <div style="font-size: 15px; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <span>👕 ${escapeHtml(m.name || 'Model')}</span>
+                    ${m.code ? `<span style="font-size: 11px; padding: 2px 6px; background: rgba(56,189,248,0.15); color: var(--accent); border-radius: 4px;">${escapeHtml(m.code)}</span>` : ''}
+                  </div>
+                  <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">
+                    Partiyalar: <strong>${m.partyCount || 0} ta</strong> &bull; Reja hajmi: <strong style="color: var(--success);">${formatNumber(m.totalQuantity || 0)} dona</strong>
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <span class="badge badge-info">${ops.length} ta operatsiya</span>
+                </div>
+              </div>
+
+              ${ops.length ? `
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; gap: 5px;">
+                  ${ops.map(o => `
+                    <span style="font-size: 10.5px; background: rgba(255,255,255,0.05); padding: 3px 7px; border-radius: 5px; color: var(--text-secondary);">
+                      ${escapeHtml(o.name)}: <strong style="color: var(--accent);">${formatNumber(o.rate)} so'm</strong>
+                    </span>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }
+        modelsContainer.innerHTML = mHtml;
+      }
+
+      // 2. Render Party History List (Descending)
+      const partyContainer = document.getElementById('partyHistoryList');
+      const sortedParties = [...parties].reverse();
+      const filteredParties = sortedParties.filter(p => {
+        if (!q) return true;
+        const pNum = String(p.partyNumber || '');
+        const mName = String(p.modelName || p.modelId || '').toLowerCase();
+        return pNum.includes(q) || mName.includes(q);
+      });
+
+      if (!filteredParties.length) {
+        partyContainer.innerHTML = '<div class="state-message">Chiqarilgan partiyalar mavjud emas.</div>';
+      } else {
+        let pHtml = '';
+        for (const p of filteredParties.slice(0, 30)) {
+          const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString('uz-UZ') : '';
+          pHtml += `
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="worker-id-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">#${p.partyNumber || '-'}</div>
+                <div>
+                  <div style="font-size: 13.5px; font-weight: 700;">${escapeHtml(p.modelName || p.modelId || 'Model')}</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">
+                    Rangi: <strong>${escapeHtml(p.color || '-')}</strong> ${dateStr ? `&bull; Sana: ${dateStr}` : ''}
+                  </div>
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 14px; font-weight: 800; color: var(--accent);">${formatNumber(p.totalQuantity || p.qty || 0)} dona</div>
+                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Bichuv</div>
+              </div>
+            </div>
+          `;
+        }
+        partyContainer.innerHTML = pHtml;
+      }
+    }
+
+    // Sub-View 3: Conveyor & Submitted Tickets Feed
+    function renderConveyorTickets() {
+      const tickets = state.submittedTickets || [];
+      const totalPieces = tickets.reduce((s, t) => s + (Number(t.qty) || 0), 0);
+
+      document.getElementById('kpiTicketsCount').textContent = `${tickets.length} ta patta`;
+      document.getElementById('kpiTicketsPieces').textContent = `${formatNumber(totalPieces)} dona`;
+      document.getElementById('ticketsCountBadge').textContent = tickets.length;
+
+      const container = document.getElementById('ticketsFeedList');
+      const q = (state.ticketSearch || '').toLowerCase();
+      const filterC = state.ticketFilter || 'all';
+
+      // Sort tickets latest first
+      const sortedTickets = [...tickets].reverse();
+      const filtered = sortedTickets.filter(t => {
+        if (filterC !== 'all' && String(t.konveyer) !== filterC) return false;
+        if (!q) return true;
+        const patta = String(t.pattaNumber || '');
+        const party = String(t.partyNumber || '');
+        const model = String(t.modelId || '').toLowerCase();
+        return patta.includes(q) || party.includes(q) || model.includes(q);
+      });
+
+      if (!filtered.length) {
+        container.innerHTML = '<div class="state-message">Topshirilgan pattalar topilmadi.</div>';
+        return;
+      }
+
+      let html = '';
+      for (const t of filtered.slice(0, 50)) {
+        const entries = t.entries || [];
+        const konveyerLabel = t.konveyer ? `${t.konveyer}-Konveyer` : 'Konveyer';
+        const modelObj = (state.models || []).find(m => m.id === t.modelId);
+        const modelDisplayName = modelObj?.name || t.modelId || 'Model';
+
+        html += `
+          <div class="ticket-feed-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge badge-warning" style="font-size: 12px;">Patta #${t.pattaNumber}</span>
+                <span class="badge badge-info" style="font-size: 11px;">Partiya #${t.partyNumber}</span>
+                <span style="font-weight: 700; font-size: 13.5px; color: var(--text-primary);">${escapeHtml(modelDisplayName)}</span>
+              </div>
+              <span style="font-size: 11.5px; color: var(--text-muted); font-family: monospace;">⏱️ ${escapeHtml(t.submittedAt || '—')}</span>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+              <div>Konveyer: <strong style="color: var(--text-primary);">${escapeHtml(konveyerLabel)}</strong> &bull; Rang: <strong>${escapeHtml(t.color || '-')}</strong></div>
+              <div style="font-size: 13.5px; font-weight: 800; color: var(--success);">${formatNumber(t.qty)} dona</div>
+            </div>
+
+            ${entries.length ? `
+              <div style="padding-top: 8px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 4px;">
+                ${entries.map(e => `
+                  <div style="font-size: 11px; display: flex; justify-content: space-between; color: var(--text-secondary);">
+                    <span>✂️ ${escapeHtml(e.opName)}: <strong style="color: var(--text-primary);">${escapeHtml(e.workerName || ('#' + e.workerId))}</strong></span>
+                    <span style="color: var(--accent); font-weight: 600;">${formatNumber(e.count || t.qty)} dona</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    // Sub-View 4: Company Workstations
+    function renderCompanyWorkstations() {
+      const container = document.getElementById('companyDevicesList');
+      const allDevs = Object.entries(state.devices || {});
+      const compDevs = allDevs.filter(([_, d]) => d.companyId === state.companyId);
+
+      document.getElementById('kpiCompanyDevCount').textContent = `${compDevs.length} ta qurilma`;
+      document.getElementById('companyDevBadge').textContent = compDevs.length;
+
+      if (!compDevs.length) {
+        container.innerHTML = '<div class="state-message">Ushbu sexga biriktirilgan kompyuterlar mavjud emas.</div>';
+        return;
+      }
+
+      let html = '';
+      for (const [machId, dev] of compDevs) {
+        const isBlocked = !!dev.isBlocked;
+        const role = (dev.role || 'admin').toLowerCase();
+        let roleClass = 'role-admin';
+        let roleLabel = 'ADMIN';
+        if (role === 'type') { roleClass = 'role-type'; roleLabel = 'TYPE'; }
+        if (role === 'print') { roleClass = 'role-print'; roleLabel = 'PRINT'; }
+
+        let lastSeenFormatted = 'Nomaʼlum';
+        if (dev.lastSeen) {
+          try {
+            const dt = new Date(dev.lastSeen);
+            lastSeenFormatted = dt.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) + ' (' + dt.toLocaleDateString('uz-UZ') + ')';
+          } catch(e) {}
+        }
+
+        html += `
+          <div class="card" style="padding: 14px 16px;">
+            <div class="card-top">
+              <div>
+                <div style="font-size: 15px; font-weight: 800; color: var(--text-primary);">
+                  💻 ${escapeHtml(dev.hostname || 'Kompyuter')}
+                </div>
+                <div style="font-size: 11.5px; font-family: monospace; color: var(--text-muted); margin-top: 3px;">
+                  HWID: <code>${escapeHtml(machId)}</code>
+                </div>
+              </div>
+              <span class="role-badge ${roleClass}">${roleLabel}</span>
+            </div>
+
+            <div class="card-meta">
+              <span>⏱️ Oxirgi faollik: <strong>${lastSeenFormatted}</strong></span>
+              <span>🔑 Litsenziya: <strong>${dev.isLifetime ? 'Umrbod' : (dev.expiry || 'Faol')}</strong></span>
+              <span>Holat: <strong style="color: ${isBlocked ? 'var(--danger)' : 'var(--success)'};">${isBlocked ? '⛔ Bloklangan' : '✅ Faol'}</strong></span>
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
     // Filter Listeners
     document.querySelectorAll('[data-dev-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2111,6 +2703,40 @@
     });
 
     document.getElementById('refreshBtn').addEventListener('click', fetchAllData);
+
+
+    // Search & Filter Listeners for Models and Tickets
+    const modelSearchEl = document.getElementById('modelSearchInput');
+    if (modelSearchEl) {
+      modelSearchEl.addEventListener('input', (e) => {
+        state.modelSearch = e.target.value;
+        renderModelsAndParties();
+      });
+    }
+
+    const ticketSearchEl = document.getElementById('ticketSearchInput');
+    if (ticketSearchEl) {
+      ticketSearchEl.addEventListener('input', (e) => {
+        state.ticketSearch = e.target.value;
+        renderConveyorTickets();
+      });
+    }
+
+    const backBtnEl = document.getElementById('btnBackToCompanies');
+    if (backBtnEl) {
+      backBtnEl.addEventListener('click', () => {
+        switchTab('tabCompanies');
+      });
+    }
+
+    document.querySelectorAll('#conveyorFilterPills [data-ticket-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#conveyorFilterPills [data-ticket-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.ticketFilter = btn.dataset.ticketFilter;
+        renderConveyorTickets();
+      });
+    });
 
     // Initial Bootstrap
     fetchAllData();
