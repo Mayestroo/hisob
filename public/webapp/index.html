@@ -474,14 +474,56 @@
       bottom: 0;
       left: 0;
       right: 0;
-      z-index: 100;
-      background: rgba(11, 15, 25, 0.94);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      height: calc(64px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
       display: flex;
+      align-items: center;
       justify-content: space-around;
-      padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+      z-index: 150;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex: 1;
+      height: 100%;
+      padding: 6px 2px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-item:active {
+      transform: scale(0.92);
+      color: var(--text-primary);
+    }
+    .nav-item.active {
+      color: var(--accent);
+    }
+    .nav-item.active::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 32px;
+      height: 3px;
+      border-radius: 0 0 4px 4px;
+      background: var(--accent);
+      box-shadow: 0 2px 8px var(--accent);
+    }
+    .nav-item svg {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2.2;
     }
     .nav-item {
       display: flex;
@@ -1030,13 +1072,6 @@
           </div>
         </div>
 
-        <!-- Sub-Navigation for Company Views -->
-        <div class="sub-tabs-container">
-          <button class="sub-tab-btn active" id="subTab_payroll_Btn" onclick="switchCompanySubView('payroll')">📊 Oyliklar & Xodimlar</button>
-          <button class="sub-tab-btn" id="subTab_models_Btn" onclick="switchCompanySubView('models')">👕 Modellar & Partiyalar</button>
-          <button class="sub-tab-btn" id="subTab_tickets_Btn" onclick="switchCompanySubView('tickets')">🎫 Topshirilgan Pattalar</button>
-          <button class="sub-tab-btn" id="subTab_devices_Btn" onclick="switchCompanySubView('devices')">💻 Sex Kompyuterlari</button>
-        </div>
       </div>
 
       <!-- VIEW 1: PAYROLL & EMPLOYEES -->
@@ -1301,30 +1336,9 @@
   </div>
 
   <!-- ============================================== -->
-  <!-- BOTTOM NAVIGATION BAR (5 TABS) -->
-  <!-- ============================================== -->
-  <nav class="bottom-nav">
-    <a class="nav-item active admin-only" data-tab="tabDevices">
-      <div class="nav-badge" id="navDevBadge" style="display: none;"></div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>
-      <span>Qurilmalar</span>
-    </a>
-    <a class="nav-item admin-only" data-tab="tabCompanies">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
-      <span>Sexlar</span>
-    </a>
-    <a class="nav-item admin-only" data-tab="tabKeys">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m21 2-2 2m-1.5 1.5L14 9l-1.5-1.5L10 10l2 2-7 7a2 2 0 0 1-2.83-2.83l7-7-2-2 2.5-2.5 1.5 1.5L19 3.5"/><circle cx="15.5" cy="8.5" r=".5" fill="currentColor"/></svg>
-      <span>Kalitlar</span>
-    </a>
-    <a class="nav-item" data-tab="tabUmumiy">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
-      <span>Boshqaruv</span>
-    </a>
-    <a class="nav-item" data-tab="tabWorkers">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span>Ishchilar</span>
-    </a>
+  <!-- DYNAMIC BOTTOM NAVIGATION BAR -->
+  <nav class="bottom-nav" id="dynamicBottomNav">
+    <!-- Rendered dynamically by renderDynamicBottomNav() -->
   </nav>
 
   <!-- ============================================== -->
@@ -1460,7 +1474,103 @@
     // ==============================================
     // TAB SWITCHING & ROUTING
     // ==============================================
+    
+    // ==============================================
+    // DYNAMIC BOTTOM NAVIGATION LOGIC
+    // ==============================================
+    function renderDynamicBottomNav() {
+      const nav = document.getElementById('dynamicBottomNav');
+      if (!nav) return;
+
+      // Determine if we are in "Company Mode" or "Global Admin Mode"
+      const inCompanyMode = (state.activeTab === 'tabUmumiy') || state.isCompanyOwner;
+
+      let html = '';
+
+      if (inCompanyMode) {
+        // --- COMPANY MODE: 4 WORKSHOP VIEWS + EXIT ---
+        const sub = state.activeCompanySubView || 'payroll';
+
+        html += `
+          <a class="nav-item ${sub === 'payroll' ? 'active' : ''}" onclick="onDynamicNavClick('companySub', 'payroll')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
+            <span>Oyliklar</span>
+          </a>
+          <a class="nav-item ${sub === 'models' ? 'active' : ''}" onclick="onDynamicNavClick('companySub', 'models')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
+            <span>Modellar</span>
+          </a>
+          <a class="nav-item ${sub === 'tickets' ? 'active' : ''}" onclick="onDynamicNavClick('companySub', 'tickets')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+            <span>Pattalar</span>
+          </a>
+          <a class="nav-item ${sub === 'devices' ? 'active' : ''}" onclick="onDynamicNavClick('companySub', 'devices')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>
+            <span>Qurilmalar</span>
+          </a>
+        `;
+
+        if (state.isSuperAdmin) {
+          html += `
+            <a class="nav-item" onclick="onDynamicNavClick('exitToCompanies')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+              <span>Sexlar</span>
+            </a>
+          `;
+        }
+      } else {
+        // --- GLOBAL ADMIN MODE: 4 MAIN TABS ---
+        const tab = state.activeTab;
+
+        html += `
+          <a class="nav-item ${tab === 'tabDevices' ? 'active' : ''}" onclick="onDynamicNavClick('mainTab', 'tabDevices')">
+            <div class="nav-badge" id="navDevBadge" style="display: none;"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>
+            <span>Qurilmalar</span>
+          </a>
+          <a class="nav-item ${tab === 'tabCompanies' ? 'active' : ''}" onclick="onDynamicNavClick('mainTab', 'tabCompanies')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+            <span>Sexlar</span>
+          </a>
+          <a class="nav-item ${tab === 'tabKeys' ? 'active' : ''}" onclick="onDynamicNavClick('mainTab', 'tabKeys')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m21 2-2 2m-1.5 1.5L14 9l-1.5-1.5L10 10l2 2-7 7a2 2 0 0 1-2.83-2.83l7-7-2-2 2.5-2.5 1.5 1.5L19 3.5"/><circle cx="15.5" cy="8.5" r=".5" fill="currentColor"/></svg>
+            <span>Kalitlar</span>
+          </a>
+          <a class="nav-item ${tab === 'tabWorkers' ? 'active' : ''}" onclick="onDynamicNavClick('mainTab', 'tabWorkers')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>Ishchilar</span>
+          </a>
+        `;
+      }
+
+      nav.innerHTML = html;
+    }
+
+    function onDynamicNavClick(type, target) {
+      triggerHaptic('selection');
+
+      if (type === 'exitToCompanies') {
+        switchTab('tabCompanies');
+        return;
+      }
+
+      if (type === 'companySub') {
+        if (state.activeTab !== 'tabUmumiy') {
+          switchTab('tabUmumiy');
+        }
+        switchCompanySubView(target);
+        return;
+      }
+
+      if (type === 'mainTab') {
+        switchTab(target);
+        return;
+      }
+    }
+
     function switchTab(tabId) {
+      state.activeTab = tabId;
+      renderDynamicBottomNav();
       triggerHaptic('selection');
       state.activeTab = tabId;
 
@@ -2413,6 +2523,8 @@
     // TAB 5: ENTERPRISE OVERVIEW & SUB-VIEWS
     // ==============================================
     function switchCompanySubView(subViewName) {
+      state.activeCompanySubView = subViewName;
+      renderDynamicBottomNav();
       state.activeCompanySubView = subViewName;
       ['payroll', 'models', 'tickets', 'devices'].forEach(v => {
         const el = document.getElementById(`subView_${v}`);
