@@ -10,7 +10,26 @@ const DIST_DIR = path.join(ROOT_DIR, 'dist-build');
 const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, { cwd: ROOT_DIR, stdio: 'inherit', ...options });
+  const isWin = process.platform === 'win32';
+  if (isWin && (command === 'npm' || command === 'npx')) {
+    return execFileSync(process.env.ComSpec || 'cmd.exe', ['/c', command, ...args], {
+      cwd: ROOT_DIR,
+      stdio: 'inherit',
+      ...options
+    });
+  }
+  try {
+    return execFileSync(command, args, { cwd: ROOT_DIR, stdio: 'inherit', ...options });
+  } catch (err) {
+    if (isWin && err.code === 'ENOENT') {
+      return execFileSync(process.env.ComSpec || 'cmd.exe', ['/c', command, ...args], {
+        cwd: ROOT_DIR,
+        stdio: 'inherit',
+        ...options
+      });
+    }
+    throw err;
+  }
 }
 
 // 1. Calculate New Version
