@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWorkbookStore } from '../../store/workbookStore';
-import { X, Users, UserPlus, Trash2, Search, Edit3, Check, Award } from 'lucide-react';
+import { X, Users, UserPlus, Trash2, Search, Edit3, Check, Award, Download } from 'lucide-react';
 import { formatMoney } from '../../engine/formulaEngine';
 
 export const WorkerManagerModal: React.FC = () => {
@@ -12,6 +12,7 @@ export const WorkerManagerModal: React.FC = () => {
   const deleteWorker = useWorkbookStore((s) => s.deleteWorker);
   const confirmAction = useWorkbookStore((s) => s.confirmAction);
   const addNotification = useWorkbookStore((s) => s.addNotification);
+  const exportWorkersExcel = useWorkbookStore((s) => s.exportWorkersExcel);
   const [newWorkerName, setNewWorkerName] = useState('');
   const [newWorkerStaj, setNewWorkerStaj] = useState('');
   const [search, setSearch] = useState('');
@@ -80,13 +81,33 @@ export const WorkerManagerModal: React.FC = () => {
               Markaziy Ishchilar & Staj Ro'yxati ({workers.length} ta)
             </span>
           </div>
-          <button
-            onClick={closeModal}
-            className="soft-btn soft-btn-secondary"
-            style={{ width: '32px', height: '32px', padding: 0, borderRadius: 'var(--radius-full)' }}
-          >
-            <X size={16} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={exportWorkersExcel}
+              className="soft-btn soft-btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-full)'
+              }}
+              title="Ishchilar ro'yxatini Excel (.xlsx) faylida yuklab olish"
+            >
+              <Download size={14} />
+              <span>Excel yuklab olish</span>
+            </button>
+            <button
+              onClick={closeModal}
+              className="soft-btn soft-btn-secondary"
+              style={{ width: '32px', height: '32px', padding: 0, borderRadius: 'var(--radius-full)' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="modal-body">
@@ -313,13 +334,34 @@ export const WorkerManagerModal: React.FC = () => {
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             Jami: <strong>{workers.length} nafar</strong> (shundan <strong>{stajWorkersCount} nafari</strong> stajli)
           </div>
-          <button
-            onClick={closeModal}
-            className="soft-btn soft-btn-primary"
-            style={{ borderRadius: 'var(--radius-full)', padding: '6px 20px' }}
-          >
-            Yopish
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={exportWorkersExcel}
+              className="soft-btn soft-btn-secondary"
+              style={{
+                borderRadius: 'var(--radius-full)',
+                padding: '6px 14px',
+                color: '#10b981',
+                borderColor: 'rgba(16, 185, 129, 0.4)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12.5px'
+              }}
+              title="Ishchilar ro'yxatini Excel (.xlsx) faylida yuklab olish"
+            >
+              <Download size={14} />
+              <span>Excel (.xlsx)</span>
+            </button>
+            <button
+              onClick={closeModal}
+              className="soft-btn soft-btn-primary"
+              style={{ borderRadius: 'var(--radius-full)', padding: '6px 20px' }}
+            >
+              Yopish
+            </button>
+          </div>
         </div>
       </div>
     </div>

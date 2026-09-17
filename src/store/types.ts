@@ -210,6 +210,7 @@ export interface PersistenceSlice {
     options?: { forceBackup?: boolean; companyId?: string; skipCloudSync?: boolean; skipReconcile?: boolean }
   ) => Promise<void>;
   exportExcel: () => void;
+  exportWorkersExcel: () => void;
   resetToOriginal: () => Promise<void>;
   restoreFromCloud: (companyId?: string) => Promise<{ success: boolean; message?: string }>;
 }

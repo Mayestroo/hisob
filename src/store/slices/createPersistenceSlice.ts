@@ -3,7 +3,7 @@ import { WorkbookStore, PersistenceSlice } from '../types';
 import { Worker, ModelConfig } from '../../types/workbook';
 import { DEFAULT_BATCH_SIZES } from '../../constants/batchConstants';
 import { STORAGE_KEY } from '../../constants/sheetConstants';
-import { exportWorkbookToExcel } from '../../engine/excelSync';
+import { exportWorkbookToExcel, exportWorkersListToExcel } from '../../engine/excelSync';
 import {
   sanitizeWorkers,
   sanitizeModels,
@@ -422,6 +422,12 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
     const { models, workers } = get();
     exportWorkbookToExcel(models, workers);
     get().addNotification('success', 'Yuklab olindi', 'Excel (.xlsx) fayli muvaffaqiyatli saqlandi!');
+  },
+
+  exportWorkersExcel: () => {
+    const { workers } = get();
+    exportWorkersListToExcel(workers);
+    get().addNotification('success', 'Yuklab olindi', "Ishchilar ro'yxati Excel (.xlsx) fayli muvaffaqiyatli saqlandi!");
   },
 
   resetToOriginal: async () => {

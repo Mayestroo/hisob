@@ -72,7 +72,8 @@
     "express": "^5.2.1",
     "firebase": "^12.18.0",
     "lz-string": "^1.5.0",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import { Worker, ModelConfig } from '../types/workbook';
 import { calculateModelTotals, calculateMasterPayroll } from './formulaEngine';
 
@@ -131,5 +131,116 @@ export function exportWorkbookToExcel(models: ModelConfig[], workers: Worker[], 
   // Trigger browser download
   const dateStr = new Date().toISOString().slice(0, 10);
   const finalFilename = customFilename || `Buxoro_Futbolka_Hisob_${dateStr}.xlsx`;
+  XLSX.writeFile(wb, finalFilename);
+}
+
+export function exportWorkersListToExcel(workers: Worker[], customFilename?: string) {
+  const wb = XLSX.utils.book_new();
+
+  // Sort workers by ID ascending
+  const sortedWorkers = [...workers].sort((a, b) => a.id - b.id);
+
+  // Default thin borders for cells
+  const defaultBorder = {
+    top: { style: 'thin', color: { rgb: '000000' } },
+    bottom: { style: 'thin', color: { rgb: '000000' } },
+    left: { style: 'thin', color: { rgb: '000000' } },
+    right: { style: 'thin', color: { rgb: '000000' } }
+  };
+
+  const headerStyle = {
+    font: { bold: true, sz: 11, name: 'Calibri' },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: defaultBorder,
+    fill: { fgColor: { rgb: 'F2F2F2' } }
+  };
+
+  const idCellStyle = {
+    font: { sz: 11, name: 'Calibri' },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: defaultBorder
+  };
+
+  const nameCellStyle = {
+    font: { sz: 11, name: 'Calibri' },
+    alignment: { horizontal: 'left', vertical: 'center' },
+    border: defaultBorder
+  };
+
+  const emptyCellStyle = {
+    font: { sz: 11, name: 'Calibri' },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: defaultBorder
+  };
+
+  const ws: any = {};
+
+  // Headers: 1-ustun: ID raqami, 2-ustun: F.I.O, 3,4,5,6,7-ustunlar: bo'sh
+  const headers = ['ID raqami', 'F.I.O', '', '', '', '', ''];
+  headers.forEach((h, colIdx) => {
+    const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIdx });
+    ws[cellRef] = {
+      t: 's',
+      v: h,
+      s: headerStyle
+    };
+  });
+
+  // Data rows
+  sortedWorkers.forEach((w, idx) => {
+    const r = idx + 1;
+
+    // 1-ustun: ID raqami
+    ws[XLSX.utils.encode_cell({ r, c: 0 })] = {
+      t: 'n',
+      v: w.id,
+      s: idCellStyle
+    };
+
+    // 2-ustun: F.I.O
+    ws[XLSX.utils.encode_cell({ r, c: 1 })] = {
+      t: 's',
+      v: w.name || '',
+      s: nameCellStyle
+    };
+
+    // 3, 4, 5, 6, 7-ustunlar: bo'sh
+    for (let c = 2; c < 7; c++) {
+      ws[XLSX.utils.encode_cell({ r, c })] = {
+        t: 's',
+        v: '',
+        s: emptyCellStyle
+      };
+    }
+  });
+
+  const totalRows = Math.max(sortedWorkers.length, 0);
+  ws['!ref'] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: totalRows, c: 6 }
+  });
+
+  // Column widths: ID (12), F.I.O (35), 5 bo'sh ustun (16 each)
+  ws['!cols'] = [
+    { wch: 12 },
+    { wch: 35 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 16 }
+  ];
+
+  // Row heights: Header 26pt, data rows 22pt
+  const rows = [{ hpt: 26 }];
+  for (let i = 0; i < totalRows; i++) {
+    rows.push({ hpt: 22 });
+  }
+  ws['!rows'] = rows;
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Ishchilar');
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const finalFilename = customFilename || `Ishchilar_Royxati_${dateStr}.xlsx`;
   XLSX.writeFile(wb, finalFilename);
 }
