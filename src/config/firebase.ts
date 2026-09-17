@@ -67,7 +67,7 @@ export function getFirebaseDB(): Database | null {
 }
 
 export const APP_VERSION =
-  (env.VITE_APP_VERSION as string) || '1.5.0';
+  (env.VITE_APP_VERSION as string) || '1.7.2';
 
 export const ENABLE_FIREBASE_SYNC =
   (env.VITE_ENABLE_FIREBASE_SYNC as string) === 'true' && IS_FIREBASE_CONFIGURED;

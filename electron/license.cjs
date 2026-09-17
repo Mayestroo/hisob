@@ -14,6 +14,15 @@ let CLOUD_CONFIG = {
   rtdbUrl: 'https://hisobchi-c930c-default-rtdb.asia-southeast1.firebasedatabase.app'
 };
 
+let APP_VERSION = '1.7.2';
+try {
+  const pkgPath = path.join(__dirname, '../package.json');
+  if (fs.existsSync(pkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    if (pkg && pkg.version) APP_VERSION = pkg.version;
+  }
+} catch (e) {}
+
 /**
  * Get permanent hardware identifier on Windows / other OS
  * Format: XXXX-XXXX-XXXX-XXXX (e.g. 9EE3-D5A1-F461-BC42)
@@ -376,7 +385,7 @@ function syncWithCloud(userDataDir, currentStatus, force = false) {
     isLifetime: !!currentStatus.isLifetime,
     expiry: currentStatus.expiry || (currentStatus.isTrial ? 'Trial 24h' : 'None'),
     licenseKey: currentStatus.licenseKey || '',
-    appVersion: '1.3.0',
+    appVersion: APP_VERSION,
     lastSeenAt: new Date().toISOString()
   };
 

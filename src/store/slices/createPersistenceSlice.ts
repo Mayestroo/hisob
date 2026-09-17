@@ -15,6 +15,7 @@ import {
 import { padZero } from '../../utils/formatters';
 import { syncWrite, fetchCompanyCloudData, fetchCompanyArchives } from '../../services/firebaseSync';
 import { mergeCloudSyncData } from '../helpers/syncMerger';
+import { useAuthStore } from '../authStore';
 
 export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], PersistenceSlice> = (set, get) => ({
   isSaving: false,
@@ -23,7 +24,7 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
   initStore: async (forcedCompanyId?: string) => {
     // Check license first
     await get().checkLicense();
-    const currentCompanyId = forcedCompanyId || get().licenseStatus?.companyId || 'company_main';
+    const currentCompanyId = forcedCompanyId || get().licenseStatus?.companyId || useAuthStore.getState().companyId || 'comp_novda';
 
     const eAPI = (window as any).electronAPI;
 
@@ -325,7 +326,7 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
     if (!options?.skipCloudSync) {
       try {
         const machineId = state.licenseStatus?.machineId || 'device_' + (typeof window !== 'undefined' ? window.navigator.userAgent.slice(0, 10) : 'local');
-        let syncPayload: Record<string, any>;
+        let syncPayload: Record<string, any> | null = null;
         let writeMode: 'set' | 'update' = 'set';
 
         if (overrideState) {
@@ -348,28 +349,16 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
           if (overrideState.deletedWorkerIds !== undefined) syncPayload.deletedWorkerIds = overrideState.deletedWorkerIds;
           if (overrideState.deletedModelIds !== undefined) syncPayload.deletedModelIds = overrideState.deletedModelIds;
         } else {
-          // Xavfsiz to'liq yangilash (Ctrl+S yoki dastur bootstrap) — boshqa PC'larni o'chirib yubormaslik uchun faqat update rejimida
-          writeMode = 'update';
-          syncPayload = {
-            workers: sanitizeWorkers(payload.workers),
-            models: payload.models,
-            nextPartyNumber: payload.nextPartyNumber,
-            printedPartyHistory: payload.printedPartyHistory,
-            submittedTickets: payload.submittedTickets,
-            currentPeriod: payload.currentPeriod,
-            periods: payload.periods || state.periods || [],
-            availableSizes: payload.availableSizes,
-            deletedTicketIds: payload.deletedTicketIds,
-            deletedPartyIds: payload.deletedPartyIds,
-            deletedWorkerIds: payload.deletedWorkerIds,
-            deletedModelIds: payload.deletedModelIds,
-            updatedAt: Date.now(),
-            updatedBy: machineId
-          };
+          // Manual disk save / Ctrl+S: faqat lokal disk va zaxirani yangilaydi.
+          // Boshqa kompyuterlardagi yangi ma'lumotlarni tasodifan eski massiv bilan
+          // qayta yozib yubormaslik uchun overrideState bo'lmaganda bulutga to'liq massiv yuborilmaydi.
+          syncPayload = null;
         }
 
-        const companyId = overrideState?.companyId || options?.companyId || state.licenseStatus?.companyId || 'company_main';
-        syncWrite(companyId, 'syncData', syncPayload, writeMode);
+        if (syncPayload) {
+          const companyId = overrideState?.companyId || options?.companyId || state.licenseStatus?.companyId || useAuthStore.getState().companyId || 'comp_novda';
+          syncWrite(companyId, 'syncData', syncPayload, writeMode);
+        }
       } catch (e) {
         console.warn('[Store] Cloud sync write error:', e);
       }
@@ -378,7 +367,7 @@ export const createPersistenceSlice: StateCreator<WorkbookStore, [], [], Persist
     // Electron IPC mode - asynchronous serialized disk persistence
     if (eAPI) {
       try {
-        const companyId = overrideState?.companyId || options?.companyId || state.licenseStatus?.companyId || 'company_main';
+        const companyId = overrideState?.companyId || options?.companyId || state.licenseStatus?.companyId || useAuthStore.getState().companyId || 'comp_novda';
         const writeOpts = { ...options, companyId };
         let result: any;
         if (overrideState && !options?.forceBackup && eAPI.dbPatch) {

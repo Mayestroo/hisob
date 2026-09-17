@@ -15,7 +15,7 @@ import { useEffect } from 'react';
 import { useWorkbookStore } from './workbookStore';
 import { useUIStore } from './uiStore';
 import { useAuthStore, applyRolePermissions } from './authStore';
-import { initAutoSyncQueue, subscribeToCompany, flushOfflineQueue } from '../services/firebaseSync';
+import { initAutoSyncQueue, subscribeToCompany, flushOfflineQueue, fetchCompanyCloudData } from '../services/firebaseSync';
 import { ensureAnonymousAuth } from '../services/firebaseAuth';
 import { initDeviceRemoteListener } from '../services/deviceRemoteService';
 import { mergeCloudSyncData } from './helpers/syncMerger';
@@ -112,7 +112,7 @@ export function useStoreBridge() {
     const cleanupSync = initAutoSyncQueue();
 
     // Multi-User Real-time Sync Subscription from other PCs of the same company
-    let activeCompanyId = legacy.licenseStatus?.companyId || null;
+    let activeCompanyId = legacy.licenseStatus?.companyId || useAuthStore.getState().companyId || null;
     let unsubCompany: (() => void) | null = null;
     const syncQueue: any[] = [];
     let isProcessingSyncQueue = false;
@@ -144,7 +144,7 @@ export function useStoreBridge() {
           }
 
           // Check if active company changed while in the queue
-          const currentLicComp = useWorkbookStore.getState().licenseStatus?.companyId;
+          const currentLicComp = useWorkbookStore.getState().licenseStatus?.companyId || useAuthStore.getState().companyId;
           if (targetCompId !== activeCompanyId || (currentLicComp && targetCompId !== currentLicComp)) {
             console.warn(`[MultiSync] Kompaniya o'zgargan (${targetCompId} !== ${currentLicComp}), navbat tozalandi.`);
             syncQueue.length = 0;
@@ -155,6 +155,8 @@ export function useStoreBridge() {
 
           try {
             const currentState = useWorkbookStore.getState();
+            const prevWorkers = currentState.workers || [];
+            const prevTickets = currentState.submittedTickets || [];
             const merged = mergeCloudSyncData(currentState, syncData);
 
             const cleanMergedWorkers = sanitizeWorkers(merged.workers);
@@ -175,6 +177,23 @@ export function useStoreBridge() {
               deletedModelIds: merged.deletedModelIds
             });
 
+            // Yangi ma'lumotlar kelganini foydalanuvchiga yengil bildirishnoma orqali ko'rsatish
+            const diffWorkers = cleanMergedWorkers.length - prevWorkers.length;
+            const diffTickets = (merged.submittedTickets?.length || 0) - prevTickets.length;
+
+            if (diffWorkers > 0) {
+              useWorkbookStore.getState().addNotification(
+                'info',
+                "Bulutdan sinxronlandi",
+                `Boshqa kompyuterdan ${diffWorkers} ta yangi ishchi qabul qilindi.`
+              );
+            } else if (diffTickets > 0) {
+              useWorkbookStore.getState().addNotification(
+                'info',
+                "Bulutdan sinxronlandi",
+                `Boshqa kompyuterdan ${diffTickets} ta yangi patta qabul qilindi.`
+              );
+            }
 
             // Diskka ham saqlash
             const eAPI = (window as any).electronAPI;
@@ -224,6 +243,14 @@ export function useStoreBridge() {
         syncQueue.push(companyData);
         processSyncQueue(targetCompId);
       });
+
+      // Dastlabki bir martalik yuklash (tarmoq uzilishlaridan keyin tezkor tiklash uchun)
+      fetchCompanyCloudData(targetCompId).then((cloudData) => {
+        if (cloudData && cloudData.updatedAt) {
+          syncQueue.push({ syncData: cloudData });
+          processSyncQueue(targetCompId);
+        }
+      }).catch(() => {});
     };
 
     setupCompanySync(activeCompanyId);
@@ -235,11 +262,51 @@ export function useStoreBridge() {
         if (cleanupRemote) cleanupRemote();
         cleanupRemote = initDeviceRemoteListener(machId);
       }
-      const newCompId = state.licenseStatus?.companyId || null;
+      const newCompId = state.licenseStatus?.companyId || useAuthStore.getState().companyId || null;
       if (newCompId !== activeCompanyId) {
         setupCompanySync(newCompId);
       }
     });
+
+    const unsubAuth = useAuthStore.subscribe((state) => {
+      const comp = state.companyId;
+      if (comp && comp !== activeCompanyId && !useWorkbookStore.getState().licenseStatus?.companyId) {
+        setupCompanySync(comp);
+      }
+    });
+
+    const checkAndPullCloudData = async () => {
+      const compId = activeCompanyId || useWorkbookStore.getState().licenseStatus?.companyId || useAuthStore.getState().companyId;
+      if (!compId || compId === 'unassigned') return;
+      try {
+        const cloudData = await fetchCompanyCloudData(compId);
+        if (cloudData && cloudData.updatedAt) {
+          syncQueue.push({ syncData: cloudData });
+          processSyncQueue(compId);
+        }
+      } catch (e) {}
+    };
+
+    const handleFocus = () => {
+      checkAndPullCloudData();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndPullCloudData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Ishxonada uxlab qolgan yoki soket uzilgan kompyuterlar uchun har 20 soniyada tekshirish
+    const pollInterval = setInterval(() => {
+      if (navigator.onLine) {
+        checkAndPullCloudData();
+      }
+    }, 20000);
 
     const initMachId = legacy.licenseStatus?.machineId;
     if (initMachId) {
@@ -254,6 +321,11 @@ export function useStoreBridge() {
       }
       syncQueue.length = 0;
       unsubLicense();
+      unsubAuth();
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(pollInterval);
       if (cleanupRemote) cleanupRemote();
     };
   }, []);
