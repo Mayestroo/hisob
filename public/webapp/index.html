@@ -476,22 +476,24 @@
       right: 0;
       height: calc(64px + env(safe-area-inset-bottom, 0px));
       padding-bottom: env(safe-area-inset-bottom, 0px);
-      background: rgba(15, 23, 42, 0.94);
+      background: #0f172a !important;
       backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
-      display: flex;
+      display: flex !important;
       align-items: center;
       justify-content: space-around;
-      z-index: 150;
-      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+      z-index: 9999 !important;
+      box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6);
+      visibility: visible !important;
+      opacity: 1 !important;
     }
     .nav-item {
-      display: flex;
+      display: flex !important;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 3px;
-      color: var(--text-muted);
+      gap: 4px;
+      color: #94a3b8;
       text-decoration: none;
       font-size: 11px;
       font-weight: 700;
@@ -502,13 +504,15 @@
       height: 100%;
       padding: 6px 2px;
       -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      text-align: center;
     }
     .nav-item:active {
       transform: scale(0.92);
-      color: var(--text-primary);
+      color: #f8fafc;
     }
     .nav-item.active {
-      color: var(--accent);
+      color: var(--accent) !important;
     }
     .nav-item.active::before {
       content: "";
@@ -524,31 +528,6 @@
       width: 22px;
       height: 22px;
       stroke-width: 2.2;
-    }
-    .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 10.5px;
-      font-weight: 600;
-      padding: 6px 8px;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.15s;
-      position: relative;
-      flex: 1;
-      text-align: center;
-    }
-    .nav-item.active {
-      color: var(--accent);
-    }
-    .nav-item svg {
-      width: 20px;
-      height: 20px;
-      stroke-width: 2;
     }
     .nav-badge {
       position: absolute;
@@ -1338,7 +1317,23 @@
   <!-- ============================================== -->
   <!-- DYNAMIC BOTTOM NAVIGATION BAR -->
   <nav class="bottom-nav" id="dynamicBottomNav">
-    <!-- Rendered dynamically by renderDynamicBottomNav() -->
+    <a class="nav-item active" onclick="onDynamicNavClick('mainTab', 'tabDevices')">
+      <div class="nav-badge" id="navDevBadge" style="display: none;"></div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>
+      <span>Qurilmalar</span>
+    </a>
+    <a class="nav-item" onclick="onDynamicNavClick('mainTab', 'tabCompanies')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+      <span>Sexlar</span>
+    </a>
+    <a class="nav-item" onclick="onDynamicNavClick('mainTab', 'tabKeys')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m21 2-2 2m-1.5 1.5L14 9l-1.5-1.5L10 10l2 2-7 7a2 2 0 0 1-2.83-2.83l7-7-2-2 2.5-2.5 1.5 1.5L19 3.5"/><circle cx="15.5" cy="8.5" r=".5" fill="currentColor"/></svg>
+      <span>Kalitlar</span>
+    </a>
+    <a class="nav-item" onclick="onDynamicNavClick('mainTab', 'tabWorkers')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Ishchilar</span>
+    </a>
   </nav>
 
   <!-- ============================================== -->
@@ -1570,28 +1565,20 @@
 
     function switchTab(tabId) {
       state.activeTab = tabId;
-      renderDynamicBottomNav();
       triggerHaptic('selection');
-      state.activeTab = tabId;
 
       document.querySelectorAll('.tab-view').forEach(el => el.style.display = 'none');
       const target = document.getElementById(tabId);
       if (target) target.style.display = 'block';
 
-      document.querySelectorAll('.nav-item').forEach(el => {
-        el.classList.toggle('active', el.dataset.tab === tabId);
-      });
+      renderDynamicBottomNav();
 
       window.location.hash = tabId;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    document.querySelectorAll('.nav-item').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        switchTab(btn.dataset.tab);
-      });
-    });
+    // Call renderDynamicBottomNav immediately on script load
+    renderDynamicBottomNav();
 
     // Check URL Hash on Load
     if (window.location.hash) {
@@ -1685,6 +1672,7 @@
 
         renderCompanySelect();
         renderCompaniesList();
+        renderDynamicBottomNav();
 
         // 4. Fetch Devices
         const devRes = await fetch(`${FIREBASE_BASE_URL}/devices.json`);
@@ -2851,8 +2839,13 @@
     });
 
     // Initial Bootstrap
+    renderDynamicBottomNav();
     fetchAllData();
     setInterval(fetchAllData, 30000); // 30s auto polling
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDynamicBottomNav();
+    });
   </script>
 </body>
 </html>
