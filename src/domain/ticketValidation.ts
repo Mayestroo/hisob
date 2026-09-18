@@ -247,39 +247,54 @@ export function validateTicketForSubmission(
   const pattaText = String(form.patta || '').trim();
   const currentPattaNum = /^\d+$/.test(pattaText) ? Number(pattaText) : 0;
 
+  if (!isStrict) {
+    let actualPattaNum = currentPattaNum;
+    if (!Number.isSafeInteger(actualPattaNum) || actualPattaNum <= 0) {
+      // Auto-assign next patta number if left blank or 0 in free mode
+      const partyKey = currentPartyStr || '1';
+      const existingForParty = (submittedTickets || []).filter(
+        (s) => s.modelId === model.id && String(s.partyNumber || '1') === partyKey
+      );
+      const maxExisting = existingForParty.length > 0
+        ? Math.max(...existingForParty.map((s) => s.pattaNumber || 0))
+        : 0;
+      actualPattaNum = maxExisting + 1;
+    } else {
+      // User explicitly typed a patta number: check if already submitted
+      let alreadySubmitted: SubmittedTicketRecord | undefined;
+      if (currentPartyStr && actualPattaNum > 0) {
+        alreadySubmitted = (submittedTickets || []).find(
+          (s) =>
+            s.modelId === model.id &&
+            String(s.partyNumber) === currentPartyStr &&
+            s.pattaNumber === actualPattaNum
+        );
+      }
+      if (alreadySubmitted) {
+        return {
+          isValid: false,
+          errorType: 'error',
+          title: 'Bu patta allaqachon kiritilgan!',
+          message: `Partiya ${currentPartyStr}, Patta ${actualPattaNum} allaqachon hisobga o'tkazilgan (${alreadySubmitted.submittedAt || ''} da, ${alreadySubmitted.qty} dona).`
+        };
+      }
+    }
+
+    return {
+      isValid: true,
+      actualPattaNum,
+      filledEntries,
+      partyOwner: undefined
+    };
+  }
+
+  // --- Qat'iy rejim (Strict Mode) checks below ---
   if (!Number.isSafeInteger(currentPattaNum) || currentPattaNum <= 0) {
     return {
       isValid: false,
       errorType: 'error',
       title: 'Patta raqami xato!',
       message: 'Patta raqamini musbat butun son sifatida kiriting.'
-    };
-  }
-
-  if (!isStrict) {
-    let alreadySubmitted: SubmittedTicketRecord | undefined;
-    if (currentPartyStr && currentPattaNum > 0) {
-      alreadySubmitted = (submittedTickets || []).find(
-        (s) =>
-          s.modelId === model.id &&
-          String(s.partyNumber) === currentPartyStr &&
-          s.pattaNumber === currentPattaNum
-      );
-    }
-    if (alreadySubmitted) {
-      return {
-        isValid: false,
-        errorType: 'error',
-        title: 'Bu patta allaqachon kiritilgan!',
-        message: `Partiya ${currentPartyStr}, Patta ${currentPattaNum} allaqachon hisobga o'tkazilgan (${alreadySubmitted.submittedAt || ''} da, ${alreadySubmitted.qty} dona).`
-      };
-    }
-
-    return {
-      isValid: true,
-      actualPattaNum: currentPattaNum || 1,
-      filledEntries,
-      partyOwner: undefined
     };
   }
 

@@ -21,6 +21,7 @@ const BackupManagerModal = React.lazy(() => import('./components/modals/BackupMa
 const PeriodManagerModal = React.lazy(() => import('./components/modals/PeriodManagerModal').then(m => ({ default: m.PeriodManagerModal })));
 const DeveloperModal = React.lazy(() => import('./components/modals/DeveloperModal').then(m => ({ default: m.DeveloperModal })));
 const AppUpdateModal = React.lazy(() => import('./components/modals/AppUpdateModal').then(m => ({ default: m.AppUpdateModal })));
+const EditSubmittedTicketModal = React.lazy(() => import('./components/modals/EditSubmittedTicketModal').then(m => ({ default: m.EditSubmittedTicketModal })));
 
 import { NotificationToast } from './components/NotificationToast';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -28,7 +29,7 @@ import { ConfirmModal } from './components/modals/ConfirmModal';
 import { useWorkbookStore } from './store/workbookStore';
 import { PermissionGuard } from './components/PermissionGuard';
 import { AccessDenied } from './components/AccessDenied';
-import { SYSTEM_SHEET_NAMES } from './constants/sheetConstants';
+import { SYSTEM_SHEET_NAMES, DEFAULT_ACTIVE_SHEET } from './constants/sheetConstants';
 import { subscribeToAppUpdates } from './services/updateService';
 
 export const App: React.FC = () => {
@@ -38,6 +39,7 @@ export const App: React.FC = () => {
   const jonatish = useWorkbookStore((s) => s.jonatish);
   const addNotification = useWorkbookStore((s) => s.addNotification);
   const initStore = useWorkbookStore((s) => s.initStore);
+  const isServerConnected = useWorkbookStore((s) => s.isServerConnected);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -46,6 +48,22 @@ export const App: React.FC = () => {
     }
     initStore();
   }, [initStore]);
+
+  // Reconcile saved activeSheet with loaded models once database has loaded
+  useEffect(() => {
+    if (isServerConnected && models.length > 0) {
+      const isSystemSheet =
+        (SYSTEM_SHEET_NAMES as readonly string[]).includes(activeSheet) ||
+        activeSheet === 'Konveyer' ||
+        activeSheet === 'Конвейер';
+      const isModelSheet = models.some(
+        (m) => m.name === activeSheet || m.id === activeSheet || m.hisobSheetName === activeSheet
+      );
+      if (!isSystemSheet && !isModelSheet) {
+        setActiveSheet(models[0]?.name || DEFAULT_ACTIVE_SHEET);
+      }
+    }
+  }, [isServerConnected, models, activeSheet, setActiveSheet]);
 
   // Periodic license check (every 60 seconds)
   useEffect(() => {
@@ -269,6 +287,7 @@ export const App: React.FC = () => {
         {modalType === 'worker_detail' && <WorkerDetailModal />}
         {modalType === 'backup_manager' && <BackupManagerModal />}
         {modalType === 'app_update' && <AppUpdateModal />}
+        {modalType === 'edit_ticket' && <EditSubmittedTicketModal />}
       </React.Suspense>
       <NotificationToast />
       <LoadingOverlay />

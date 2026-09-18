@@ -228,6 +228,46 @@ export async function fetchCompanyCloudData(companyId: string): Promise<any | nu
 }
 
 /**
+ * Korxonaning umumiy sozlamalarini (jumladan, qat'iy tekshiruv rejimini) olish
+ */
+export async function fetchCompanySettings(companyId: string): Promise<{ requireTicketValidation?: boolean } | null> {
+  if (!ENABLE_FIREBASE_SYNC || !companyId || companyId === 'unassigned') {
+    return null;
+  }
+
+  const db = getFirebaseDB();
+  if (IS_FIREBASE_CONFIGURED && db) {
+    try {
+      const snap = await get(ref(db, `companies/${companyId}/settings`));
+      if (snap.exists() && snap.val()) {
+        return snap.val();
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const res = await fetch(`https://hisobchi-c930c-default-rtdb.asia-southeast1.firebasedatabase.app/companies/${companyId}/settings.json`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data) return data;
+    }
+  } catch (e) {}
+
+  // Fallback: check companies_meta
+  try {
+    const metaRes = await fetch(`https://hisobchi-c930c-default-rtdb.asia-southeast1.firebasedatabase.app/companies_meta/${companyId}.json`);
+    if (metaRes.ok) {
+      const meta = await metaRes.json();
+      if (meta && meta.requireTicketValidation !== undefined) {
+        return { requireTicketValidation: meta.requireTicketValidation };
+      }
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+/**
  * Yopilgan oylik arxivini Firebase bulutiga saqlash
  */
 export async function saveCompanyArchive(

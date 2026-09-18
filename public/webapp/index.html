@@ -2290,11 +2290,51 @@
       if (state.isReadOnly || !state.isSuperAdmin) { showToast('Faqat ko‘rish rejimi: Sizda ruxsat yo‘q', '⚠️'); return; }
       triggerHaptic('medium');
       try {
-        const res = await fetch(`${FIREBASE_BASE_URL}/companies_meta/${compId}.json`, {
+        const payload = JSON.stringify({ requireTicketValidation: newVal });
+        const nowIso = new Date().toISOString();
+
+        // 1. Update companies_meta
+        const p1 = fetch(`${FIREBASE_BASE_URL}/companies_meta/${compId}.json`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ requireTicketValidation: newVal })
+          body: payload
         });
+
+        // 2. Update companies/{compId}/settings
+        const p2 = fetch(`${FIREBASE_BASE_URL}/companies/${compId}/settings.json`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        });
+
+        // 3. Update all devices belonging to this company so real-time listeners trigger on PCs immediately
+        const p3 = (async () => {
+          try {
+            const devRes = await fetch(`${FIREBASE_BASE_URL}/devices.json`);
+            if (devRes.ok) {
+              const allDevs = await devRes.json();
+              if (allDevs && typeof allDevs === 'object') {
+                const devPromises = [];
+                for (const [machId, d] of Object.entries(allDevs)) {
+                  const dComp = (d && (d.companyId || 'company_main')) || 'company_main';
+                  if (dComp === compId || (compId === 'comp_novda' && dComp === 'company_main')) {
+                    devPromises.push(fetch(`${FIREBASE_BASE_URL}/devices/${machId}.json`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ requireTicketValidation: newVal, updatedAt: nowIso })
+                    }));
+                  }
+                }
+                await Promise.all(devPromises);
+              }
+            }
+          } catch (e) {
+            console.warn('[StrictValidation] Device patch error:', e);
+          }
+        })();
+
+        const [res] = await Promise.all([p1, p2, p3]);
+
         if (res.ok) {
           if (state.companies[compId]) state.companies[compId].requireTicketValidation = newVal;
           renderCompaniesList();

@@ -673,6 +673,23 @@ function setLicenseCompany(userDataDir, companyId, companyName) {
   }
 }
 
+function setLicenseValidation(userDataDir, requireTicketValidation) {
+  try {
+    const licPath = getLicenseFilePath(userDataDir);
+    let licObj = {};
+    if (fs.existsSync(licPath)) {
+      try {
+        licObj = JSON.parse(fs.readFileSync(licPath, 'utf-8')) || {};
+      } catch (e) {}
+    }
+    licObj.requireTicketValidation = Boolean(requireTicketValidation);
+    fs.writeFileSync(licPath, JSON.stringify(licObj, null, 2), 'utf-8');
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: 'Tekshiruv rejimini saqlashda xatolik: ' + err.message };
+  }
+}
+
 module.exports = {
   getHardwareId,
   generateActivationKey,
@@ -680,5 +697,6 @@ module.exports = {
   checkLicenseStatus,
   saveLicense,
   setLicenseCompany,
+  setLicenseValidation,
   syncWithCloud
 };

@@ -15,11 +15,12 @@ import { useEffect } from 'react';
 import { useWorkbookStore } from './workbookStore';
 import { useUIStore } from './uiStore';
 import { useAuthStore, applyRolePermissions } from './authStore';
-import { initAutoSyncQueue, subscribeToCompany, flushOfflineQueue, fetchCompanyCloudData } from '../services/firebaseSync';
+import { initAutoSyncQueue, subscribeToCompany, flushOfflineQueue, fetchCompanyCloudData, fetchCompanySettings } from '../services/firebaseSync';
 import { ensureAnonymousAuth } from '../services/firebaseAuth';
 import { initDeviceRemoteListener } from '../services/deviceRemoteService';
 import { mergeCloudSyncData } from './helpers/syncMerger';
 import { sanitizeWorkers } from './helpers/storeSanitizers';
+import { ACTIVE_SHEET_STORAGE_KEY } from '../constants/sheetConstants';
 
 // License/role sync helper
 export const syncLicenseAuth = (lic: any) => {
@@ -73,10 +74,12 @@ export function startStoreBridge() {
   // UI sync
   useWorkbookStore.subscribe((state, prev) => {
     if (state.activeSheet !== prev.activeSheet) {
+      if (typeof localStorage !== 'undefined' && state.activeSheet) {
+        try {
+          localStorage.setItem(ACTIVE_SHEET_STORAGE_KEY, state.activeSheet);
+        } catch {}
+      }
       useUIStore.getState().setActiveSheet(state.activeSheet);
-    }
-    if (state.notifications !== prev.notifications) {
-      // Notifications atomic store boshqaradi, sync qilmaymiz
     }
   });
 
@@ -239,6 +242,39 @@ export function useStoreBridge() {
       activeCompanyId = targetCompId;
       console.log(`[MultiSync] Korxona sinxronizatsiyasi ulandi: ${targetCompId}`);
       unsubCompany = subscribeToCompany(targetCompId, (companyData) => {
+        if (!companyData) return;
+
+        // Check and apply company-wide ticket validation setting (Qat'iy / Erkin rejim)
+        const companyStrict = companyData.settings?.requireTicketValidation !== undefined
+          ? companyData.settings.requireTicketValidation
+          : companyData.requireTicketValidation;
+
+        if (companyStrict !== undefined) {
+          const currentLic = useWorkbookStore.getState().licenseStatus;
+          const currentStrict = currentLic?.requireTicketValidation;
+          if (currentStrict !== companyStrict) {
+            console.log(`[MultiSync] Korxona qat'iy tekshiruv sozlamasi yangilandi: ${companyStrict ? 'Majburiy (Qat\'iy)' : 'Ixtiyoriy (Erkin)'}`);
+            useWorkbookStore.setState((s) => ({
+              licenseStatus: s.licenseStatus
+                ? { ...s.licenseStatus, requireTicketValidation: companyStrict }
+                : s.licenseStatus
+            }));
+            const eAPI = (window as any).electronAPI;
+            if (eAPI?.setLicenseValidation) {
+              eAPI.setLicenseValidation(companyStrict).catch(() => {});
+            }
+            if (currentStrict !== undefined) {
+              useWorkbookStore.getState().addNotification(
+                'info',
+                'Sozlama yangilandi',
+                companyStrict
+                  ? "Patta va Partiya kiritish majburiy (qat'iy tekshiruv) rejimiga o'tkazildi."
+                  : "Patta va Partiya kiritish erkin (ixtiyoriy) rejimiga o'tkazildi."
+              );
+            }
+          }
+        }
+
         if (!companyData?.syncData?.updatedAt) return;
         syncQueue.push(companyData);
         processSyncQueue(targetCompId);
@@ -249,6 +285,25 @@ export function useStoreBridge() {
         if (cloudData && cloudData.updatedAt) {
           syncQueue.push({ syncData: cloudData });
           processSyncQueue(targetCompId);
+        }
+      }).catch(() => {});
+
+      // Dastlabki korxona sozlamalarini (qat'iy rejim holatini) tekshirish
+      fetchCompanySettings(targetCompId).then((settings) => {
+        if (settings && settings.requireTicketValidation !== undefined) {
+          const currentLic = useWorkbookStore.getState().licenseStatus;
+          if (currentLic && currentLic.requireTicketValidation !== settings.requireTicketValidation) {
+            console.log(`[MultiSync] Dastlabki sozlama qabul qilindi: ${settings.requireTicketValidation ? 'Majburiy' : 'Ixtiyoriy'}`);
+            useWorkbookStore.setState((s) => ({
+              licenseStatus: s.licenseStatus
+                ? { ...s.licenseStatus, requireTicketValidation: settings.requireTicketValidation }
+                : s.licenseStatus
+            }));
+            const eAPI = (window as any).electronAPI;
+            if (eAPI?.setLicenseValidation) {
+              eAPI.setLicenseValidation(settings.requireTicketValidation).catch(() => {});
+            }
+          }
         }
       }).catch(() => {});
     };

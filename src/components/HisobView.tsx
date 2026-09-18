@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useWorkbookStore } from '../store/workbookStore';
 import { ModelConfig, Worker } from '../types/workbook';
@@ -25,29 +25,45 @@ interface WorkerRowProps {
   operations: ModelConfig['operations'];
   workerQtyMap: Record<string, number>;
   workerTot: number;
+  isSelected: boolean;
+  onSelectRow: (workerId: number, toggle?: boolean) => void;
   onQuantityChange: (workerId: number, opName: string, valStr: string) => void;
   onCellFocus: (cellId: string, value: string, formula?: string) => void;
+  onOpenWorkerDetail?: (workerId: number, modelId?: string, opName?: string) => void;
 }
 
 const WorkerRow = React.memo<WorkerRowProps>(({
   worker,
   rowNum,
+  modelId,
   operations,
   workerQtyMap,
   workerTot,
+  isSelected,
+  onSelectRow,
   onQuantityChange,
-  onCellFocus
+  onCellFocus,
+  onOpenWorkerDetail
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <tr
-      className="fast-row"
+      className={`fast-row ${isSelected ? 'selected-row' : ''}`}
+      onClick={() => onSelectRow(worker.id, false)}
       style={{
-        backgroundColor: 'var(--bg-surface)',
+        backgroundColor: isSelected 
+          ? 'rgba(59, 130, 246, 0.15)' 
+          : (isHovered ? 'var(--bg-surface-hover)' : 'var(--bg-surface)'),
         height: '32px',
-        transition: 'background-color 0.15s'
+        cursor: 'pointer',
+        transition: 'background-color 0.12s ease',
+        boxShadow: isSelected 
+          ? 'inset 0 1.5px 0 #3b82f6, inset 0 -1.5px 0 #3b82f6' 
+          : undefined
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-subtle)')}
-      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface)')}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Col A: ID */}
       <td
@@ -56,18 +72,35 @@ const WorkerRow = React.memo<WorkerRowProps>(({
           fontWeight: 700,
           position: 'sticky',
           left: 0,
-          backgroundColor: 'var(--bg-surface)',
+          backgroundColor: isSelected
+            ? 'rgba(59, 130, 246, 0.20)'
+            : (isHovered ? 'var(--bg-surface-hover)' : 'var(--bg-surface)'),
           zIndex: 8,
-          cursor: 'pointer'
+          cursor: 'pointer',
+          borderRight: '1px solid var(--border-subtle)',
+          transition: 'background-color 0.12s ease'
         }}
-        onClick={() => onCellFocus(`A${rowNum}`, String(worker.id))}
+        onClick={(e) => {
+          e.stopPropagation();
+          onCellFocus(`A${rowNum}`, String(worker.id));
+          onSelectRow(worker.id, true);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onOpenWorkerDetail && onOpenWorkerDetail(worker.id, modelId);
+        }}
+        title="Tanlash / Bekor qilish (2 marta bosing: Ishchi hisoboti va pattalari)"
       >
         <span style={{ 
-          background: 'var(--bg-surface-subtle)', 
+          background: isSelected
+            ? '#2563eb'
+            : (isHovered ? 'var(--border-default)' : 'var(--bg-surface-subtle)'), 
           padding: '2px 8px', 
           borderRadius: 'var(--radius-full)',
           fontSize: '11.5px',
-          color: 'var(--text-secondary)'
+          color: isSelected ? '#ffffff' : (isHovered ? 'var(--text-primary)' : 'var(--text-secondary)'),
+          fontWeight: isSelected ? 800 : 700,
+          transition: 'all 0.12s ease'
         }}>
           {worker.id}
         </span>
@@ -76,17 +109,29 @@ const WorkerRow = React.memo<WorkerRowProps>(({
       {/* Col B: Name */}
       <td
         style={{
-          fontWeight: 600,
+          fontWeight: isSelected ? 700 : 600,
           paddingLeft: '12px',
           position: 'sticky',
           left: '54px',
-          backgroundColor: 'var(--bg-surface)',
+          backgroundColor: isSelected
+            ? 'rgba(59, 130, 246, 0.20)'
+            : (isHovered ? 'var(--bg-surface-hover)' : 'var(--bg-surface)'),
           zIndex: 8,
           whiteSpace: 'nowrap',
-          color: 'var(--text-primary)',
-          cursor: 'pointer'
+          color: isSelected ? '#1d4ed8' : 'var(--text-primary)',
+          cursor: 'pointer',
+          borderRight: '1px solid var(--border-subtle)',
+          transition: 'background-color 0.12s ease'
         }}
-        onClick={() => onCellFocus(`B${rowNum}`, worker.name)}
+        onClick={() => {
+          onCellFocus(`B${rowNum}`, worker.name);
+          onSelectRow(worker.id, false);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          onOpenWorkerDetail && onOpenWorkerDetail(worker.id, modelId);
+        }}
+        title="2 marta bosing: Ishchining barcha bajargan ishlari va pattalari tarixi"
       >
         {worker.name}
       </td>
@@ -107,12 +152,23 @@ const WorkerRow = React.memo<WorkerRowProps>(({
                 textAlign: 'right',
                 fontWeight: 600,
                 paddingRight: '8px',
-                color: amount > 0 ? 'var(--primary)' : 'var(--text-muted)',
+                color: amount > 0 ? (isSelected ? 'var(--primary-hover)' : 'var(--primary)') : 'var(--text-muted)',
                 borderLeft: '1px solid var(--border-subtle)',
-                backgroundColor: amount > 0 ? 'var(--primary-light)' : 'transparent',
-                cursor: 'pointer'
+                backgroundColor: isSelected
+                  ? (amount > 0 ? 'rgba(16, 185, 129, 0.28)' : 'rgba(59, 130, 246, 0.12)')
+                  : (amount > 0 ? 'var(--primary-light)' : (isHovered ? 'var(--bg-surface-hover)' : 'transparent')),
+                cursor: 'pointer',
+                transition: 'background-color 0.12s ease'
               }}
-              onClick={() => onCellFocus(`${amountColLetter}${rowNum}`, String(amount), formulaStr)}
+              onClick={() => {
+                onCellFocus(`${amountColLetter}${rowNum}`, String(amount), formulaStr);
+                onSelectRow(worker.id, false);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                onOpenWorkerDetail && onOpenWorkerDetail(worker.id, modelId, op.name);
+              }}
+              title="2 marta bosing: Qaysi pattalardan kelib tushganini ko'rish"
             >
               {amount > 0 ? formatMoney(amount) : '—'}
             </td>
@@ -122,15 +178,35 @@ const WorkerRow = React.memo<WorkerRowProps>(({
               style={{
                 textAlign: 'center',
                 padding: '2px 4px',
-                backgroundColor: qty > 0 ? 'var(--primary-light)' : 'transparent'
+                borderLeft: '1px solid var(--border-subtle)',
+                backgroundColor: isSelected
+                  ? (qty > 0 ? 'rgba(16, 185, 129, 0.28)' : 'rgba(59, 130, 246, 0.12)')
+                  : (qty > 0 ? 'var(--primary-light)' : (isHovered ? 'var(--bg-surface-hover)' : 'transparent')),
+                transition: 'background-color 0.12s ease',
+                cursor: 'pointer'
               }}
-              onClick={() => onCellFocus(`${qtyColLetter}${rowNum}`, String(qty))}
+              onClick={() => {
+                onCellFocus(`${qtyColLetter}${rowNum}`, String(qty));
+                onSelectRow(worker.id, false);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                onOpenWorkerDetail && onOpenWorkerDetail(worker.id, modelId, op.name);
+              }}
+              title="2 marta bosing: Qaysi pattalardan kelib tushganini ko'rish"
             >
               <input
                 type="number"
                 value={qty > 0 ? qty : ''}
                 onChange={(e) => onQuantityChange(worker.id, op.name, e.target.value)}
-                onFocus={() => onCellFocus(`${qtyColLetter}${rowNum}`, String(qty))}
+                onFocus={() => {
+                  onCellFocus(`${qtyColLetter}${rowNum}`, String(qty));
+                  onSelectRow(worker.id, false);
+                }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  onOpenWorkerDetail && onOpenWorkerDetail(worker.id, modelId, op.name);
+                }}
                 placeholder="—"
                 style={{
                   width: '100%',
@@ -144,8 +220,10 @@ const WorkerRow = React.memo<WorkerRowProps>(({
                   fontSize: '12.5px',
                   fontWeight: qty > 0 ? 700 : 400,
                   color: qty > 0 ? 'var(--text-primary)' : 'var(--text-muted)',
-                  transition: 'all 0.15s'
+                  transition: 'all 0.15s',
+                  cursor: 'pointer'
                 }}
+                title="2 marta bosing: Qaysi pattalardan kelib tushganini ko'rish"
               />
             </td>
           </React.Fragment>
@@ -161,13 +239,24 @@ const WorkerRow = React.memo<WorkerRowProps>(({
               textAlign: 'right',
               fontWeight: 700,
               paddingRight: '12px',
-              color: workerTot > 0 ? 'var(--primary)' : 'var(--text-muted)',
-              backgroundColor: workerTot > 0 ? 'var(--primary-light)' : 'transparent',
+              color: workerTot > 0 ? (isSelected ? '#15803d' : 'var(--primary)') : 'var(--text-muted)',
+              backgroundColor: isSelected
+                ? (workerTot > 0 ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.16)')
+                : (workerTot > 0 ? 'var(--primary-light)' : (isHovered ? 'var(--bg-surface-hover)' : 'transparent')),
               borderLeft: '2px solid var(--primary)',
               fontSize: '13.5px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              transition: 'background-color 0.12s ease'
             }}
-            onClick={() => onCellFocus(`${sumColLetter}${rowNum}`, String(workerTot), `=SUM(...)`)}
+            onClick={() => {
+              onCellFocus(`${sumColLetter}${rowNum}`, String(workerTot), `=SUM(...)`);
+              onSelectRow(worker.id, false);
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onOpenWorkerDetail && onOpenWorkerDetail(worker.id, modelId);
+            }}
+            title="2 marta bosing: Ushbu modeldagi barcha pattalar va ishlar"
           >
             {formatMoney(workerTot)}
           </td>
@@ -186,6 +275,31 @@ export const HisobView: React.FC<HisobViewProps> = ({ model }) => {
   const openModal = useWorkbookStore((s) => s.openModal);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedWorkerId, setSelectedWorkerId] = useState<number | null>(null);
+
+  const handleSelectRow = useCallback((workerId: number, toggle = false) => {
+    setSelectedWorkerId((prev) => {
+      if (toggle) {
+        return prev === workerId ? null : workerId;
+      }
+      return workerId;
+    });
+  }, []);
+
+  const handleOpenWorkerDetail = useCallback((workerId: number, modelId?: string, opName?: string) => {
+    openModal({ type: 'worker_detail', workerId, modelId, opName });
+  }, [openModal]);
+
+  // Keyboard shortcut: Escape clears row selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedWorkerId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const modelTotals = useMemo(() => {
     return calculateModelTotals(model, workers);
@@ -505,8 +619,11 @@ export const HisobView: React.FC<HisobViewProps> = ({ model }) => {
                         operations={model.operations}
                         workerQtyMap={workerQtyMap}
                         workerTot={workerTot}
+                        isSelected={selectedWorkerId === worker.id}
+                        onSelectRow={handleSelectRow}
                         onQuantityChange={handleQuantityChange}
                         onCellFocus={handleCellFocus}
+                        onOpenWorkerDetail={handleOpenWorkerDetail}
                       />
                     );
                   })}
@@ -532,8 +649,11 @@ export const HisobView: React.FC<HisobViewProps> = ({ model }) => {
                       operations={model.operations}
                       workerQtyMap={workerQtyMap}
                       workerTot={workerTot}
+                      isSelected={selectedWorkerId === worker.id}
+                      onSelectRow={handleSelectRow}
                       onQuantityChange={handleQuantityChange}
                       onCellFocus={handleCellFocus}
+                      onOpenWorkerDetail={handleOpenWorkerDetail}
                     />
                   );
                 })

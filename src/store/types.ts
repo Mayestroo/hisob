@@ -32,6 +32,7 @@ export interface ModalState {
     | 'patta_print'
     | 'worker_detail'
     | 'app_update'
+    | 'edit_ticket'
     | null;
   modelId?: string;
   opName?: string;
@@ -77,6 +78,10 @@ export interface TicketSlice {
   clearTicketForm: (modelId: string) => void;
   jonatish: (modelId: string) => Promise<boolean>;
   deleteSubmittedTicket: (ticketId: string) => Promise<void>;
+  updateSubmittedTicket: (
+    ticketId: string,
+    updatedEntries: Array<{ opName: string; workerId: number; rateSnapshot?: number }>
+  ) => Promise<boolean>;
 }
 
 export interface ArchivedPeriodData {

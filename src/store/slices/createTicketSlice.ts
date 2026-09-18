@@ -63,10 +63,14 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
     const state = get();
     const currentForm = state.ticketForms[modelId];
     if (!currentForm) return;
+    const requireTicketValidation = state.licenseStatus?.requireTicketValidation !== false;
     const updatedForms = {
       ...state.ticketForms,
       [modelId]: {
         ...currentForm,
+        konveyer: requireTicketValidation ? (currentForm.konveyer || '') : '',
+        party: requireTicketValidation ? (currentForm.party || '') : '',
+        patta: requireTicketValidation ? (currentForm.patta || '') : '',
         qty: '',
         entries: {}
       }
@@ -159,7 +163,7 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
     const maxPattasInParty = matchingPrintedParty ? matchingPrintedParty.pattaCount : 0;
 
     let nextPartyStr = currentPartyStr;
-    let nextPattaNum = currentPattaNum + 1;
+    let nextPattaNum = (actualPattaNum || currentPattaNum) + 1;
 
     if (maxPattasInParty > 0 && currentPattaNum >= maxPattasInParty) {
       // Find subsequent printed parties for this model if any
@@ -184,8 +188,9 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
       ...state.ticketForms,
       [modelId]: {
         ...form,
-        party: nextPartyStr,
-        patta: String(nextPattaNum),
+        konveyer: requireTicketValidation ? (form.konveyer || '') : '',
+        party: requireTicketValidation ? nextPartyStr : '',
+        patta: requireTicketValidation ? String(nextPattaNum) : '',
         qty: '',
         entries: {}
       }
@@ -280,5 +285,124 @@ export const createTicketSlice: StateCreator<WorkbookStore, [], [], TicketSlice>
       'Patta bekor qilindi',
       `Partiya ${ticket.partyNumber}, Patta ${ticket.pattaNumber} (${ticket.qty} dona) hisobdan qaytarildi va o'chirildi.`
     );
+  },
+
+  updateSubmittedTicket: async (
+    ticketId: string,
+    updatedEntries: Array<{ opName: string; workerId: number; rateSnapshot?: number }>
+  ): Promise<boolean> => {
+    const state = get();
+    const ticket = (state.submittedTickets || []).find((s) => s.id === ticketId);
+    if (!ticket) {
+      state.addNotification('error', 'Xatolik', 'Tahrirlanayotgan patta topilmadi');
+      return false;
+    }
+
+    const model = state.models.find((m) => m.id === ticket.modelId);
+    if (!model) {
+      state.addNotification('error', 'Xatolik', `Model topilmadi: ${ticket.modelId}`);
+      return false;
+    }
+
+    // Build worker lookup map
+    const workerMap = new Map<number, string>();
+    for (const w of state.workers) {
+      workerMap.set(w.id, w.name);
+    }
+
+    // Validate entries: filter valid worker IDs that exist in workers
+    const validEntries: Array<{
+      opName: string;
+      workerId: number;
+      workerNameSnapshot: string;
+      rateSnapshot: number;
+    }> = [];
+
+    for (const e of updatedEntries) {
+      if (typeof e.workerId === 'number' && Number.isSafeInteger(e.workerId) && e.workerId > 0) {
+        if (!workerMap.has(e.workerId)) {
+          state.addNotification('error', 'Ishchi topilmadi', `Bazada #${e.workerId} ID ga ega ishchi mavjud emas!`);
+          return false;
+        }
+        const op = model.operations.find((o) => o.name === e.opName);
+        const rate = e.rateSnapshot !== undefined && e.rateSnapshot > 0 ? e.rateSnapshot : (op?.rate || 0);
+        validEntries.push({
+          opName: e.opName,
+          workerId: e.workerId,
+          workerNameSnapshot: workerMap.get(e.workerId) || `#${e.workerId}`,
+          rateSnapshot: rate
+        });
+      }
+    }
+
+    if (validEntries.length === 0) {
+      state.addNotification('warning', 'Ishchilar kiritilmadi', "Hech bo'lmaganda bitta operatsiyaga ishchi ID sini kiriting.");
+      return false;
+    }
+
+    // Adjust hisobQuantities:
+    // Step 1: Revert old entries of this ticket
+    const updatedHisobQuantities = { ...(model.hisobQuantities || {}) };
+    for (const oldEntry of ticket.entries || []) {
+      if (updatedHisobQuantities[oldEntry.workerId]) {
+        const currentOps = { ...updatedHisobQuantities[oldEntry.workerId] };
+        if (currentOps[oldEntry.opName] !== undefined) {
+          currentOps[oldEntry.opName] = Math.max(0, currentOps[oldEntry.opName] - ticket.qty);
+          if (currentOps[oldEntry.opName] === 0) {
+            delete currentOps[oldEntry.opName];
+          }
+          if (Object.keys(currentOps).length === 0) {
+            delete updatedHisobQuantities[oldEntry.workerId];
+          } else {
+            updatedHisobQuantities[oldEntry.workerId] = currentOps;
+          }
+        }
+      }
+    }
+
+    // Step 2: Add new entries of this ticket
+    for (const newEntry of validEntries) {
+      const currentOps = { ...(updatedHisobQuantities[newEntry.workerId] || {}) };
+      const curQty = currentOps[newEntry.opName] || 0;
+      currentOps[newEntry.opName] = curQty + ticket.qty;
+      updatedHisobQuantities[newEntry.workerId] = currentOps;
+    }
+
+    const updatedModels = state.models.map((m) => {
+      if (m.id === ticket.modelId) {
+        return {
+          ...m,
+          hisobQuantities: updatedHisobQuantities
+        };
+      }
+      return m;
+    });
+
+    const updatedSubmittedTickets = (state.submittedTickets || []).map((s) => {
+      if (s.id === ticketId) {
+        return {
+          ...s,
+          entries: validEntries
+        };
+      }
+      return s;
+    });
+
+    set({
+      models: updatedModels,
+      submittedTickets: updatedSubmittedTickets
+    });
+
+    await get().saveToDisk({
+      models: updatedModels,
+      submittedTickets: updatedSubmittedTickets
+    });
+
+    state.addNotification(
+      'success',
+      'Patta yangilandi',
+      `Partiya ${ticket.partyNumber}, Patta #${ticket.pattaNumber} (${ticket.qty} dona) operatsiyalari va hisob-kitob summalari muvaffaqiyatli yangilandi!`
+    );
+    return true;
   }
 });

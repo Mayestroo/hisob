@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLicenseStatus: () => ipcRenderer.invoke('license-status'),
   activateLicense: (key) => ipcRenderer.invoke('license-activate', key),
   setLicenseCompany: (companyId, companyName) => ipcRenderer.invoke('license-set-company', { companyId, companyName }),
+  setLicenseValidation: (requireTicketValidation) => ipcRenderer.invoke('license-set-validation', requireTicketValidation),
   getDataDir: () => ipcRenderer.invoke('get-data-dir'),
   printHtml: (options) => ipcRenderer.invoke('print-html', options),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),

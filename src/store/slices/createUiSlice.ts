@@ -1,28 +1,47 @@
 import { StateCreator } from 'zustand';
 import { WorkbookStore, UiSlice, ActiveCellInfo, ModalState } from '../types';
 import { Notification } from '../../types/workbook';
-import { DEFAULT_ACTIVE_SHEET } from '../../constants/sheetConstants';
+import { DEFAULT_ACTIVE_SHEET, ACTIVE_SHEET_STORAGE_KEY } from '../../constants/sheetConstants';
 
-export const createUiSlice: StateCreator<WorkbookStore, [], [], UiSlice> = (set, get) => ({
-  activeSheet: DEFAULT_ACTIVE_SHEET,
-  activeCell: {
-    cellId: 'A3',
-    sheetName: DEFAULT_ACTIVE_SHEET,
-    value: '',
-    formula: ''
-  },
-  notifications: [],
-  modalState: { type: null },
-  confirmState: null,
-  loadingMessage: null,
-  availableUpdate: null,
+const getInitialActiveSheet = (): string => {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(ACTIVE_SHEET_STORAGE_KEY);
+      if (saved && saved.trim()) {
+        return saved.trim();
+      }
+    } catch {}
+  }
+  return DEFAULT_ACTIVE_SHEET;
+};
 
-  setAvailableUpdate: (update) => set({ availableUpdate: update }),
-  setLoadingMessage: (msg: string | null) => set({ loadingMessage: msg }),
+export const createUiSlice: StateCreator<WorkbookStore, [], [], UiSlice> = (set, get) => {
+  const initialSheet = getInitialActiveSheet();
+  return {
+    activeSheet: initialSheet,
+    activeCell: {
+      cellId: 'A3',
+      sheetName: initialSheet,
+      value: '',
+      formula: ''
+    },
+    notifications: [],
+    modalState: { type: null },
+    confirmState: null,
+    loadingMessage: null,
+    availableUpdate: null,
 
-  setActiveSheet: (sheetName: string) => {
-    set({ activeSheet: sheetName });
-  },
+    setAvailableUpdate: (update) => set({ availableUpdate: update }),
+    setLoadingMessage: (msg: string | null) => set({ loadingMessage: msg }),
+
+    setActiveSheet: (sheetName: string) => {
+      if (typeof localStorage !== 'undefined' && sheetName) {
+        try {
+          localStorage.setItem(ACTIVE_SHEET_STORAGE_KEY, sheetName);
+        } catch {}
+      }
+      set({ activeSheet: sheetName });
+    },
 
   setActiveCell: (info: ActiveCellInfo) => {
     const cur = get().activeCell;
@@ -105,4 +124,5 @@ export const createUiSlice: StateCreator<WorkbookStore, [], [], UiSlice> = (set,
       notifications: state.notifications.filter((n) => n.id !== id)
     }));
   }
-});
+  };
+};

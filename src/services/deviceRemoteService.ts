@@ -208,26 +208,26 @@ export function initDeviceRemoteListener(machineId: string): () => void {
     // 5. Instant Remote Ticket Validation Toggle (Majburiy / Ixtiyoriy)
     if (data.requireTicketValidation !== undefined) {
       const isStrict = !!data.requireTicketValidation;
-      if (lastHandledRequireValidation === isStrict) {
-        // Allaqachon bir xil
-      } else {
-        const current = useWorkbookStore.getState().licenseStatus;
-        if (current && current.requireTicketValidation !== isStrict) {
-          lastHandledRequireValidation = isStrict;
-          console.log(`[RemoteControl] Patta tekshiruvi o'zgardi: ${isStrict ? 'Majburiy' : 'Ixtiyoriy'}`);
-          useWorkbookStore.setState((s) => ({
-            licenseStatus: s.licenseStatus
-              ? {
-                  ...s.licenseStatus,
-                  requireTicketValidation: isStrict
-                }
-              : s.licenseStatus
-          }));
+      const current = useWorkbookStore.getState().licenseStatus;
+      const currentVal = current?.requireTicketValidation;
 
-          if (eAPI?.getLicenseStatus) {
-            await eAPI.getLicenseStatus();
-          }
+      if (currentVal !== isStrict || lastHandledRequireValidation !== isStrict) {
+        lastHandledRequireValidation = isStrict;
+        console.log(`[RemoteControl] Patta tekshiruvi o'zgardi: ${isStrict ? 'Majburiy' : 'Ixtiyoriy'}`);
+        useWorkbookStore.setState((s) => ({
+          licenseStatus: s.licenseStatus
+            ? {
+                ...s.licenseStatus,
+                requireTicketValidation: isStrict
+              }
+            : s.licenseStatus
+        }));
 
+        if (eAPI?.setLicenseValidation) {
+          eAPI.setLicenseValidation(isStrict).catch(() => {});
+        }
+
+        if (currentVal !== undefined && currentVal !== isStrict) {
           useWorkbookStore.getState().addNotification(
             'info',
             'Sozlama yangilandi',
@@ -235,8 +235,6 @@ export function initDeviceRemoteListener(machineId: string): () => void {
               ? "Patta va Partiya kiritish majburiy (qat'iy tekshiruv) rejimiga o'tkazildi."
               : "Patta va Partiya kiritish erkin (ixtiyoriy) rejimiga o'tkazildi."
           );
-        } else {
-          lastHandledRequireValidation = isStrict;
         }
       }
     }

@@ -9,10 +9,13 @@ interface PattaViewProps {
 }
 
 export const PattaView: React.FC<PattaViewProps> = ({ model }) => {
+  const licenseStatus = useWorkbookStore((s) => s.licenseStatus);
+  const requireTicketValidation = licenseStatus?.requireTicketValidation !== false;
   const workers = useWorkbookStore((s) => s.workers);
+
   const form = useWorkbookStore((s) => s.ticketForms[model.id]) || {
     date: new Date().toISOString().slice(0, 10),
-    party: model.party || '',
+    party: requireTicketValidation ? (model.party || '') : '',
     color: model.color || '',
     size: model.size || '',
     qty: '',
@@ -32,13 +35,27 @@ export const PattaView: React.FC<PattaViewProps> = ({ model }) => {
   const reorderOperations = useWorkbookStore((s) => s.reorderOperations);
 
   const currentPartyStr = String(form.party || '1');
-  const licenseStatus = useWorkbookStore((s) => s.licenseStatus);
-  const requireTicketValidation = licenseStatus?.requireTicketValidation !== false;
   const { isNonExistentParty, isWrongModelParty, hasBlockingError, errorBannerText } =
     getTicketPartyStatus(form, model, printedPartyHistory, submittedTickets, { requireTicketValidation });
 
-  // Auto fill size & qty from printed history if available
+  // When strict mode is OFF (free mode), clear default pre-filled party and patta
   useEffect(() => {
+    if (!requireTicketValidation) {
+      const cur = useWorkbookStore.getState().ticketForms[model.id];
+      if (cur) {
+        if (cur.party === (model.party || '1') || cur.party === '1') {
+          updateTicketField(model.id, 'party', '');
+        }
+        if (cur.patta === '1') {
+          updateTicketField(model.id, 'patta', '');
+        }
+      }
+    }
+  }, [requireTicketValidation, model.id, model.party, updateTicketField]);
+
+  // Auto fill size & qty from printed history if available (ONLY in strict mode)
+  useEffect(() => {
+    if (!requireTicketValidation) return;
     if (!form.party || !form.patta) return;
     const pNum = parseInt(form.patta, 10);
     if (isNaN(pNum) || pNum <= 0) return;
@@ -69,7 +86,7 @@ export const PattaView: React.FC<PattaViewProps> = ({ model }) => {
         updateTicketField(model.id, 'color', matchedParty.color);
       }
     }
-  }, [form.party, form.patta, printedPartyHistory, model.id]);
+  }, [requireTicketValidation, form.party, form.patta, printedPartyHistory, model.id, availableSizes, updateTicketField, form.size, form.color]);
 
   // Inline new operation state
   const [isAddingInline, setIsAddingInline] = useState(false);

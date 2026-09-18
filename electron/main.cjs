@@ -460,6 +460,15 @@ ipcMain.handle('license-set-company', (event, { companyId, companyName }) => {
   }
 });
 
+ipcMain.handle('license-set-validation', (event, requireTicketValidation) => {
+  try {
+    const userData = app.getPath('userData');
+    return license.setLicenseValidation(userData, requireTicketValidation);
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('get-data-dir', () => {
   return getDataDir();
 });

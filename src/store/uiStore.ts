@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
+import { ACTIVE_SHEET_STORAGE_KEY } from '../constants/sheetConstants';
 
 export interface Notification {
   id: string;
@@ -69,14 +70,35 @@ function genId(): string {
 const NOTIF_TTL_MS = 5000;
 const MAX_NOTIFS = 10;
 
-export const useUIStore = create<UIStore>((set, get) => ({
-  activeSheet: 'Umumiy',
-  activeCell: { cellId: 'A1', sheetName: 'Umumiy', value: '' },
-  notifications: [],
-  modalState: { type: null },
-  loadingMessage: null,
+const getInitialActiveSheet = (): string => {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(ACTIVE_SHEET_STORAGE_KEY);
+      if (saved && saved.trim()) {
+        return saved.trim();
+      }
+    } catch {}
+  }
+  return 'Umumiy';
+};
 
-  setActiveSheet: (sheetName) => set({ activeSheet: sheetName }),
+export const useUIStore = create<UIStore>((set, get) => {
+  const initialSheet = getInitialActiveSheet();
+  return {
+    activeSheet: initialSheet,
+    activeCell: { cellId: 'A1', sheetName: initialSheet, value: '' },
+    notifications: [],
+    modalState: { type: null },
+    loadingMessage: null,
+
+    setActiveSheet: (sheetName) => {
+      if (typeof localStorage !== 'undefined' && sheetName) {
+        try {
+          localStorage.setItem(ACTIVE_SHEET_STORAGE_KEY, sheetName);
+        } catch {}
+      }
+      set({ activeSheet: sheetName });
+    },
 
   setActiveCell: (info) => set({ activeCell: info }),
 
@@ -108,7 +130,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setLoadingMessage: (msg) => set({ loadingMessage: msg }),
 
   clearAllNotifications: () => set({ notifications: [] })
-}));
+  };
+});
 
 export const useNotifications = () =>
   useUIStore(useShallow((s) => s.notifications));

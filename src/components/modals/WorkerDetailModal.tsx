@@ -24,6 +24,8 @@ interface WorkerOperationRecord {
 export const WorkerDetailModal: React.FC = () => {
   const modalType = useWorkbookStore((s) => s.modalState.type);
   const workerId = useWorkbookStore((s) => s.modalState.workerId);
+  const modalModelId = useWorkbookStore((s) => s.modalState.modelId);
+  const modalOpName = useWorkbookStore((s) => s.modalState.opName);
   const closeModal = useWorkbookStore((s) => s.closeModal);
   const workers = useWorkbookStore((s) => s.workers);
   const models = useWorkbookStore((s) => s.models);
@@ -38,7 +40,27 @@ export const WorkerDetailModal: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedModel, setSelectedModel] = useState<string>('all');
+  const [selectedOp, setSelectedOp] = useState<string>('all');
   const [selectedKonveyer, setSelectedKonveyer] = useState<string>('all');
+
+  // React to modal opening with specific model and operation
+  React.useEffect(() => {
+    if (isOpen) {
+      if (modalModelId) {
+        const m = models.find((mod) => mod.id === modalModelId || mod.name === modalModelId);
+        setSelectedModel(m ? m.name : 'all');
+      } else {
+        setSelectedModel('all');
+      }
+      if (modalOpName) {
+        setSelectedOp(modalOpName);
+      } else {
+        setSelectedOp('all');
+      }
+      setSelectedKonveyer('all');
+      setSearchQuery('');
+    }
+  }, [isOpen, modalModelId, modalOpName, models]);
 
   // Extract all operations performed by this worker across all submitted tickets
   const operationRecords = useMemo<WorkerOperationRecord[]>(() => {
@@ -88,12 +110,39 @@ export const WorkerDetailModal: React.FC = () => {
       }
     }
 
-    // Also check direct model hisobQuantities if any
-    for (const model of models) {
-      const workerOpMap = model.hisobQuantities?.[workerId];
+    // Also check direct model hisobQuantities if any direct quantities were entered
+    for (const m of models) {
+      const workerOpMap = m.hisobQuantities?.[workerId];
       if (workerOpMap) {
-        // If there are operations in hisobQuantities that might not be in submittedTickets
-        // (usually submittedTickets handles it, but let's check if there are standalone quantities)
+        for (const [opName, totalHqQty] of Object.entries(workerOpMap)) {
+          if (typeof totalHqQty === 'number' && totalHqQty > 0) {
+            const fromTicketsSum = records
+              .filter((r) => r.modelId === m.id && r.opName === opName)
+              .reduce((s, r) => s + r.qty, 0);
+
+            const directDiff = totalHqQty - fromTicketsSum;
+            if (directDiff > 0) {
+              const op = m.operations.find((o) => o.name === opName);
+              const rate = op?.rate || 0;
+              records.push({
+                id: `direct_${m.id}_${workerId}_${opName}`,
+                ticketId: 'direct',
+                submittedAt: 'Jadvaldan kiritilgan',
+                konveyer: '—',
+                modelId: m.id,
+                modelName: m.name || m.id,
+                partyNumber: '—',
+                pattaNumber: 0,
+                size: '—',
+                color: '—',
+                opName,
+                rate,
+                qty: directDiff,
+                summa: directDiff * rate
+              });
+            }
+          }
+        }
       }
     }
 
@@ -109,6 +158,16 @@ export const WorkerDetailModal: React.FC = () => {
     return Array.from(set);
   }, [operationRecords]);
 
+  const uniqueOperations = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of operationRecords) {
+      if (selectedModel === 'all' || r.modelName === selectedModel) {
+        set.add(r.opName);
+      }
+    }
+    return Array.from(set);
+  }, [operationRecords, selectedModel]);
+
   const uniqueKonveyers = useMemo(() => {
     const set = new Set<string>();
     for (const r of operationRecords) {
@@ -121,6 +180,7 @@ export const WorkerDetailModal: React.FC = () => {
   const filteredRecords = useMemo(() => {
     return operationRecords.filter((r) => {
       if (selectedModel !== 'all' && r.modelName !== selectedModel) return false;
+      if (selectedOp !== 'all' && r.opName !== selectedOp) return false;
       if (selectedKonveyer !== 'all' && r.konveyer !== selectedKonveyer) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -136,7 +196,7 @@ export const WorkerDetailModal: React.FC = () => {
       }
       return true;
     });
-  }, [operationRecords, selectedModel, selectedKonveyer, searchQuery]);
+  }, [operationRecords, selectedModel, selectedOp, selectedKonveyer, searchQuery]);
 
   // Summary totals
   const totals = useMemo(() => {
@@ -386,7 +446,7 @@ export const WorkerDetailModal: React.FC = () => {
             />
           </div>
 
-          {/* Model & Konveyer Filters */}
+          {/* Model, Operation & Konveyer Filters */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {uniqueModels.length > 1 && (
               <select
@@ -398,6 +458,27 @@ export const WorkerDetailModal: React.FC = () => {
                 <option value="all">Barcha modellar ({uniqueModels.length})</option>
                 {uniqueModels.map((m) => (
                   <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            )}
+
+            {uniqueOperations.length > 1 && (
+              <select
+                value={selectedOp}
+                onChange={(e) => setSelectedOp(e.target.value)}
+                className="soft-input"
+                style={{
+                  height: '30px',
+                  fontSize: '12px',
+                  padding: '0 8px',
+                  fontWeight: selectedOp !== 'all' ? 700 : 400,
+                  borderColor: selectedOp !== 'all' ? '#3b82f6' : undefined,
+                  color: selectedOp !== 'all' ? '#2563eb' : undefined
+                }}
+              >
+                <option value="all">Barcha operatsiyalar ({uniqueOperations.length})</option>
+                {uniqueOperations.map((op) => (
+                  <option key={op} value={op}>{op}</option>
                 ))}
               </select>
             )}
@@ -414,6 +495,37 @@ export const WorkerDetailModal: React.FC = () => {
                   <option key={k} value={k}>{k}</option>
                 ))}
               </select>
+            )}
+
+            {selectedOp !== 'all' && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'rgba(59, 130, 246, 0.12)',
+                border: '1px solid rgba(59, 130, 246, 0.35)',
+                color: '#1d4ed8',
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '11.5px',
+                fontWeight: 700
+              }}>
+                <span>Operatsiya: {selectedOp}</span>
+                <button
+                  onClick={() => setSelectedOp('all')}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: '#2563eb',
+                    padding: 0,
+                    fontWeight: 800
+                  }}
+                  title="Barcha operatsiyalarni ko'rish"
+                >
+                  ✕
+                </button>
+              </div>
             )}
 
             <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -504,8 +616,22 @@ export const WorkerDetailModal: React.FC = () => {
                       {r.partyNumber}
                     </td>
 
-                    <td style={{ textAlign: 'center', fontWeight: 800, color: '#fbbf24' }}>
-                      #{r.pattaNumber}
+                    <td style={{ textAlign: 'center', fontWeight: 800 }}>
+                      {r.pattaNumber > 0 ? (
+                        <span style={{
+                          background: 'rgba(245, 158, 11, 0.15)',
+                          color: '#d97706',
+                          border: '1px solid rgba(245, 158, 11, 0.35)',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          fontSize: '11.5px',
+                          fontWeight: 800
+                        }}>
+                          Patta #{r.pattaNumber}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      )}
                     </td>
 
                     <td style={{ textAlign: 'center', fontWeight: 700 }}>

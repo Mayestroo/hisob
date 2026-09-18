@@ -12,7 +12,8 @@ import {
   ChevronRight,
   LayoutGrid,
   ListFilter,
-  Trash2
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { useWorkbookStore } from '../store/workbookStore';
 import { CustomSelect } from './CustomSelect';
@@ -25,6 +26,7 @@ export const KonveyerView: React.FC = () => {
   const selectedArchiveFilename = useWorkbookStore((s) => s.selectedArchiveFilename);
   const deleteSubmittedTicket = useWorkbookStore((s) => s.deleteSubmittedTicket);
   const confirmAction = useWorkbookStore((s) => s.confirmAction);
+  const openModal = useWorkbookStore((s) => s.openModal);
   const isArchiveMode = !!selectedArchiveFilename;
 
   const [activeTab, setActiveTab] = useState<'matrix' | 'details'>('matrix');
@@ -1049,7 +1051,7 @@ export const KonveyerView: React.FC = () => {
                   <th style={{ minWidth: '220px', paddingLeft: '14px', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>Bajarilgan Operatsiyalar</th>
                   <th style={{ width: '130px', textAlign: 'right', paddingRight: '16px', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>Jami Summa</th>
                   {!isArchiveMode && (
-                    <th style={{ width: '75px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>O'chirish</th>
+                    <th style={{ width: '95px', textAlign: 'center', position: 'sticky', top: 0, zIndex: 20, backgroundColor: 'var(--bg-surface-subtle)' }}>Amallar</th>
                   )}
                 </tr>
               </thead>
@@ -1128,10 +1130,20 @@ export const KonveyerView: React.FC = () => {
                                   color: 'var(--text-primary)',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '4px'
+                                  gap: '5px'
                                 }}
                               >
                                 <strong style={{ color: '#818cf8', fontWeight: 700 }}>{entry.opName}:</strong>
+                                <span style={{
+                                  backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                                  color: '#2563eb',
+                                  fontWeight: 800,
+                                  padding: '1px 5px',
+                                  borderRadius: '3px',
+                                  fontSize: '10.5px'
+                                }}>
+                                  #{entry.workerId}
+                                </span>
                                 <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{wName}</span>
                               </span>
                             );
@@ -1143,42 +1155,73 @@ export const KonveyerView: React.FC = () => {
                       </td>
                       {!isArchiveMode && (
                         <td style={{ textAlign: 'center' }}>
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const ok = await confirmAction({
-                                title: "Pattani o'chirish",
-                                message: `Haqiqatan ham ushbu pattani (#${t.pattaNumber}, Partiya ${t.partyNumber}) o'chirmoqchimisiz?\n\nModel va ishchilar hisobidan tozalansin hamda Patta-hisobda kiritilmagan holatga qaytarilsin.`,
-                                confirmText: "Ha, o'chirilsin",
-                                isDanger: true
-                              });
-                              if (ok) {
-                                await deleteSubmittedTicket(t.id);
-                              }
-                            }}
-                            className="soft-btn soft-btn-danger"
-                            style={{ 
-                              padding: '4px 8px', 
-                              borderRadius: '6px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              border: '1px solid rgba(239, 68, 68, 0.25)',
-                              backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                              color: '#ef4444',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.18)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
-                            }}
-                            title="Pattani o'chirish va hisobdan qaytarish"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openModal({ type: 'edit_ticket', data: t });
+                              }}
+                              className="soft-btn"
+                              style={{ 
+                                padding: '4px 8px', 
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                                color: '#3b82f6',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.18)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.08)';
+                              }}
+                              title="Pattani tahrirlash (ishchi ID sini almashtirish)"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const ok = await confirmAction({
+                                  title: "Pattani o'chirish",
+                                  message: `Haqiqatan ham ushbu pattani (#${t.pattaNumber}, Partiya ${t.partyNumber}) o'chirmoqchimisiz?\n\nModel va ishchilar hisobidan tozalansin hamda Patta-hisobda kiritilmagan holatga qaytarilsin.`,
+                                  confirmText: "Ha, o'chirilsin",
+                                  isDanger: true
+                                });
+                                if (ok) {
+                                  await deleteSubmittedTicket(t.id);
+                                }
+                              }}
+                              className="soft-btn soft-btn-danger"
+                              style={{ 
+                                padding: '4px 8px', 
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                                color: '#ef4444',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.18)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                              }}
+                              title="Pattani o'chirish va hisobdan qaytarish"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
